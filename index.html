@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>DATA ODYSSEY VR — Perjalanan Sebuah Data di Dalam Komputer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Share+Tech+Mono&display=swap');
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; width:100%; height:100%; background:#000; overflow:hidden; font-family:'Share Tech Mono', monospace; }
+  a-scene { width:100%; height:100%; }
+
+  #hud {
+    position:fixed; inset:0; pointer-events:none; z-index:50;
+    font-family:'Share Tech Mono', monospace; color:#8ff9ff;
+  }
+  #topbar {
+    position:absolute; top:0; left:0; right:0; padding:14px 22px;
+    display:flex; justify-content:space-between; align-items:flex-start;
+    background:linear-gradient(to bottom, rgba(2,4,20,0.85), rgba(2,4,20,0));
+  }
+  #title {
+    font-family:'Orbitron', sans-serif; font-weight:800; letter-spacing:3px;
+    font-size:15px; color:#7df9ff; text-shadow:0 0 8px #2ad9ff, 0 0 20px #0af;
+  }
+  #location {
+    font-family:'Orbitron', sans-serif; font-size:13px; color:#ffe27a;
+    text-shadow:0 0 8px #ffbb2a; letter-spacing:2px; margin-top:4px;
+  }
+  #progressWrap {
+    width:280px;
+  }
+  #progressLabel { font-size:10px; letter-spacing:2px; color:#7df9ff; margin-bottom:4px; text-align:right;}
+  #progressBar {
+    width:100%; height:10px; border:1px solid #2ad9ff; background:rgba(10,20,40,0.6);
+    box-shadow:0 0 10px rgba(42,217,255,0.5) inset;
+  }
+  #progressFill {
+    height:100%; width:0%; background:linear-gradient(90deg,#0af,#7df9ff,#c07dff);
+    box-shadow:0 0 12px #2ad9ff;
+    transition:width 0.3s ease;
+  }
+  #minimap {
+    position:absolute; top:80px; right:22px; width:130px; height:300px;
+    border:1px solid #2ad9ff33; background:rgba(4,8,26,0.55);
+    box-shadow:0 0 14px rgba(42,217,255,0.25) inset;
+    padding:6px; font-size:9px;
+  }
+  .mapZone { padding:3px 4px; margin:1px 0; border-left:2px solid #234; opacity:0.45; letter-spacing:1px; }
+  .mapZone.active { border-left:2px solid #7df9ff; opacity:1; color:#fff; text-shadow:0 0 6px #2ad9ff; background:rgba(42,217,255,0.08); }
+  #dot { position:absolute; left:-4px; width:6px; height:6px; border-radius:50%; background:#ffe27a; box-shadow:0 0 8px #ffbb2a; transition: top 0.3s; }
+
+  #instructions {
+    position:absolute; bottom:16px; left:22px; padding:10px 14px;
+    background:rgba(4,8,26,0.6); border:1px solid #2ad9ff44; font-size:11px;
+    line-height:1.6; letter-spacing:0.5px; max-width:320px;
+  }
+  #instructions b { color:#ffe27a; }
+
+  #passport {
+    position:absolute; bottom:16px; right:22px; padding:10px 14px;
+    background:rgba(4,8,26,0.6); border:1px solid #2ad9ff44; font-size:9px;
+    letter-spacing:1px; max-width:210px;
+  }
+  #passport .pTitle { font-family:'Orbitron',sans-serif; color:#ffe27a; font-size:10px; letter-spacing:2px; margin-bottom:6px; }
+  #passport .stampRow { display:flex; flex-wrap:wrap; gap:5px; }
+  .stamp { width:26px; height:26px; border:1px solid #2ad9ff55; display:flex; align-items:center; justify-content:center; color:#234; font-size:12px; }
+  .stamp.got { border-color:#7dff9f; color:#7dff9f; text-shadow:0 0 6px #7dff9f; background:rgba(125,255,159,0.08); }
+
+  #crosshair {
+    position:absolute; top:50%; left:50%; width:6px; height:6px; margin:-3px 0 0 -3px;
+    border-radius:50%; background:#7df9ff; box-shadow:0 0 6px #2ad9ff;
+  }
+
+  #panel {
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%) scale(0.9);
+    width:min(560px,86vw); max-height:78vh; overflow-y:auto;
+    background:linear-gradient(160deg, rgba(6,14,36,0.96), rgba(10,4,30,0.96));
+    border:1px solid #7df9ff; box-shadow:0 0 40px rgba(42,217,255,0.55), 0 0 120px rgba(120,0,255,0.25);
+    padding:26px 28px; pointer-events:auto; display:none; opacity:0;
+    transition:opacity 0.25s ease, transform 0.25s ease;
+    clip-path: polygon(0 12px, 12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
+  }
+  #panel.show { display:block; opacity:1; transform:translate(-50%,-50%) scale(1); }
+  #panel h2 {
+    font-family:'Orbitron', sans-serif; color:#ffe27a; font-size:19px; letter-spacing:2px;
+    margin:0 0 14px 0; text-shadow:0 0 10px #ffbb2a; border-bottom:1px solid #2ad9ff55; padding-bottom:10px;
+  }
+  #panel .row { margin-bottom:12px; }
+  #panel .row .lab { color:#7df9ff; font-size:11px; letter-spacing:2px; text-transform:uppercase; margin-bottom:3px; opacity:0.85; }
+  #panel .row .val { color:#e8f8ff; font-size:13px; line-height:1.6; }
+  #panel .prosCons { display:flex; gap:16px; margin-top:6px; }
+  #panel .prosCons div { flex:1; }
+  #panel .prosCons .plus { color:#7dff9f; }
+  #panel .prosCons .minus { color:#ff7d7d; }
+  #closeBtn {
+    position:absolute; top:14px; right:16px; cursor:pointer; color:#ff7d7d; font-size:18px;
+    font-family:'Orbitron',sans-serif; user-select:none;
+  }
+
+  #startOverlay {
+    position:fixed; inset:0; z-index:100; background:radial-gradient(ellipse at center, #0a1030 0%, #000006 80%);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; color:#7df9ff;
+    font-family:'Orbitron',sans-serif; text-align:center; pointer-events:auto;
+  }
+  #startOverlay h1 { font-size:clamp(22px,4vw,42px); letter-spacing:6px; color:#8ff9ff; text-shadow:0 0 20px #2ad9ff,0 0 60px #08f; margin-bottom:6px;}
+  #startOverlay h3 { font-weight:400; font-size:14px; letter-spacing:3px; color:#c07dff; margin-top:0; text-shadow:0 0 10px #a05dff;}
+  #startOverlay p { font-family:'Share Tech Mono',monospace; color:#9fd; max-width:560px; font-size:13px; line-height:1.8; margin:18px 0 26px; }
+  #startBtn {
+    padding:14px 40px; font-family:'Orbitron',sans-serif; letter-spacing:3px; font-size:14px;
+    background:linear-gradient(90deg,#0af,#7d3fff); border:none; color:#fff; cursor:pointer;
+    box-shadow:0 0 20px rgba(42,217,255,0.6); clip-path: polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px);
+  }
+  #startBtn:hover { box-shadow:0 0 35px rgba(125,63,255,0.9); }
+
+  #modeStatus { text-align:right; font:600 11px Orbitron,sans-serif; letter-spacing:2px; color:#7dff9f; margin-top:7px; }
+  #volatileAlert, #cutscene { position:absolute; inset:0; display:none; align-items:center; justify-content:center; text-align:center; background:rgba(1,2,12,.72); pointer-events:auto; }
+  #volatileAlert.show, #cutscene.show { display:flex; }
+  .alertCore { font-family:'Orbitron',sans-serif; color:#ff4d6d; font-size:clamp(26px,5vw,54px); line-height:1.5; letter-spacing:5px; text-shadow:0 0 20px #f23; animation:alertPulse .7s infinite alternate; }
+  .cutCore { font-family:'Orbitron',sans-serif; color:#8ff9ff; font-size:clamp(19px,3vw,33px); line-height:1.8; text-shadow:0 0 18px #2ad9ff; }
+  #quiz { position:absolute; inset:0; display:none; pointer-events:auto; align-items:center; justify-content:center; background:rgba(2,4,20,.82); }
+  #quiz.show { display:flex; } #quizCard { width:min(620px,90vw); padding:28px; border:1px solid #7df9ff; background:#07102b; box-shadow:0 0 45px #0af6; }
+  #checkpoint { position:absolute; inset:0; display:none; align-items:center; justify-content:center; text-align:center; background:radial-gradient(ellipse,rgba(15,80,135,.17),transparent 56%); }
+  #checkpoint.show { display:flex; pointer-events:auto; }
+  #checkpointCard { width:min(720px,88vw); padding:28px 36px; border-top:2px solid #7df9ff; border-bottom:2px solid #7df9ff; background:repeating-linear-gradient(0deg,rgba(31,222,255,.08) 0 2px,rgba(3,13,39,.68) 2px 7px); box-shadow:0 0 36px #08f8,inset 0 0 30px #0af5; position:relative; overflow:hidden; }
+  #checkpointArea { font:600 12px Orbitron,sans-serif; letter-spacing:5px; color:#ffe27a; } #checkpointName { margin:9px 0; font:800 clamp(24px,4vw,45px) Orbitron,sans-serif; letter-spacing:4px; color:#d9ffff; text-shadow:0 0 15px #2ad9ff; } #checkpointDesc { color:#b9eaff; font-size:14px; line-height:1.65; }
+  #checkpointAction { margin-top:18px; padding:10px 18px; background:#0b2d5b; border:1px solid #7df9ff; color:#dff; font:600 11px Orbitron,sans-serif; letter-spacing:2px; cursor:pointer; }
+  #checkpointClose { margin-top:14px; display:block; margin-left:auto; margin-right:auto; background:none; border:none; color:#7df9ff88; font:11px 'Share Tech Mono',monospace; cursor:pointer; letter-spacing:1px; text-decoration:underline; }
+  #quizCard h2 { font-family:Orbitron,sans-serif; color:#ffe27a; letter-spacing:2px; } .quizChoice { display:block; width:100%; margin:9px 0; padding:11px; text-align:left; color:#dff; background:#0a1b3f; border:1px solid #2ad9ff55; cursor:pointer; font-family:inherit; } .quizChoice:hover { background:#12356b; border-color:#7df9ff; }
+
+  #cpuSim { position:absolute; inset:0; display:none; align-items:center; justify-content:center; background:rgba(2,4,20,.85); pointer-events:auto; }
+  #cpuSim.show { display:flex; }
+  #cpuSimCard { width:min(680px,90vw); padding:30px 34px; border:1px solid #ffb56b; background:#0c0a1c; box-shadow:0 0 50px rgba(255,181,107,.35); }
+  #cpuSimCard h2 { font-family:Orbitron,sans-serif; color:#ffb56b; letter-spacing:2px; margin-top:0; }
+  .fdeTrack { display:flex; justify-content:space-between; margin:22px 0; }
+  .fdeStage { flex:1; text-align:center; padding:14px 6px; border:1px solid #2ad9ff33; margin:0 5px; opacity:0.35; transition:opacity .3s, border-color .3s, box-shadow .3s; }
+  .fdeStage.active { opacity:1; border-color:#7df9ff; box-shadow:0 0 18px rgba(42,217,255,.4); }
+  .fdeStage .stageName { font-family:Orbitron,sans-serif; color:#7df9ff; font-size:11px; letter-spacing:2px; }
+  .fdeStage .stageVal { color:#ffe27a; font-size:16px; margin-top:6px; }
+  #cpuSimOutput { text-align:center; font-family:Orbitron,sans-serif; font-size:22px; color:#7dff9f; min-height:32px; }
+  #cpuSimClose { margin:20px auto 0; display:block; padding:9px 20px; background:#1a1030; border:1px solid #c07dff; color:#e8d9ff; font:600 11px Orbitron,sans-serif; letter-spacing:2px; cursor:pointer; }
+
+  #finalePortal { position:absolute; inset:0; display:none; align-items:center; justify-content:center; text-align:center; background:radial-gradient(ellipse,rgba(255,226,122,.14),rgba(1,2,12,.88) 65%); pointer-events:auto; }
+  #finalePortal.show { display:flex; }
+  #finaleCard { max-width:640px; padding:10px 20px; }
+  #finaleCard h1 { font-family:Orbitron,sans-serif; color:#ffe27a; letter-spacing:6px; font-size:clamp(22px,4vw,38px); text-shadow:0 0 26px #ffbb2a; }
+  #finaleCard p { color:#bdf2ff; font-size:14px; line-height:1.8; }
+  #finaleClose { margin-top:16px; padding:10px 24px; background:linear-gradient(90deg,#0af,#7d3fff); border:none; color:#fff; font:600 12px Orbitron,sans-serif; letter-spacing:2px; cursor:pointer; }
+
+  @keyframes alertPulse { to { transform:scale(1.04); opacity:.72; } }
+
+  ::-webkit-scrollbar { width:6px; }
+  ::-webkit-scrollbar-thumb { background:#2ad9ff88; }
+</style>
+</head>
+<body>
+
+<div id="startOverlay">
+  <h1>DATA ODYSSEY VR</h1>
+  <h3>"PERJALANAN SEBUAH DATA DI DALAM KOMPUTER"</h3>
+  <p>
+    Anda adalah sebuah paket data yang memulai perjalanan dari perangkat input,
+    melintasi jalur bus sistem, kota RAM, benteng cache, inti CPU, ruang penyimpanan,
+    pabrik GPU, hingga keluar melalui portal monitor. Gerakkan mouse untuk melihat sekitar,
+    gunakan <b style="color:#ffe27a">W A S D</b> untuk bergerak, dan klik objek bercahaya untuk membuka
+    panel data arsitektur komputer.
+  </p>
+  <button id="startBtn">MULAI PERJALANAN ►</button>
+</div>
+
+<div id="hud">
+  <div id="topbar">
+    <div>
+      <div id="title">◆ DATA ODYSSEY VR</div>
+      <div id="location">ZONA: START PLAZA</div>
+    </div>
+    <div id="progressWrap">
+      <div id="progressLabel">LEARNING PROGRESS · 0/9 AREA</div>
+      <div id="progressBar"><div id="progressFill"></div></div>
+      <div id="modeStatus">MODE: EXPLORE</div>
+    </div>
+  </div>
+
+  <div id="minimap">
+    <div style="color:#ffe27a;letter-spacing:2px;font-size:9px;margin-bottom:6px;">MINI MAP</div>
+    <div id="mapList" style="position:relative;"></div>
+  </div>
+
+  <div id="instructions">
+    <b>WASD</b> navigasi kamera &nbsp;|&nbsp; <b>SPACE / SHIFT</b> terbang &nbsp;|&nbsp; <b>F</b> mode terbang<br><b>1–9</b> teleport zona &nbsp;|&nbsp; <b>Klik objek</b> untuk info &nbsp;|&nbsp; <b>BACKSPACE</b> toggle mode
+  </div>
+
+  <div id="passport">
+    <div class="pTitle">DATA PASSPORT</div>
+    <div class="stampRow" id="stampRow"></div>
+  </div>
+
+  <div id="crosshair"></div>
+
+  <div id="volatileAlert"><div class="alertCore">VOLATILE MEMORY<br>DATA LOST</div></div>
+  <div id="cutscene"><div class="cutCore" id="cutsceneText"></div></div>
+  <div id="quiz"><div id="quizCard"></div></div>
+  <div id="cpuSim">
+    <div id="cpuSimCard">
+      <h2>CPU CORE // FETCH · DECODE · EXECUTE SIMULATION</h2>
+      <div class="row"><div class="lab" style="color:#7df9ff;font-size:11px;letter-spacing:2px;">INSTRUKSI MASUK</div><div id="cpuSimInput" style="color:#e8f8ff;font-size:15px;margin-top:4px;">—</div></div>
+      <div class="fdeTrack">
+        <div class="fdeStage" id="fdeFetch"><div class="stageName">FETCH</div><div class="stageVal" id="fdeFetchVal">-</div></div>
+        <div class="fdeStage" id="fdeDecode"><div class="stageName">DECODE</div><div class="stageVal" id="fdeDecodeVal">-</div></div>
+        <div class="fdeStage" id="fdeExecute"><div class="stageName">EXECUTE</div><div class="stageVal" id="fdeExecuteVal">-</div></div>
+      </div>
+      <div id="cpuSimOutput"></div>
+      <button id="cpuSimClose">TUTUP SIMULASI</button>
+    </div>
+  </div>
+  <div id="checkpoint"><div id="checkpointCard"><div class="scanLine"></div><div id="checkpointArea"></div><div id="checkpointName"></div><div id="checkpointDesc"></div><button id="checkpointClose">TUTUP</button></div></div>
+
+  <div id="finalePortal">
+    <div id="finaleCard">
+      <h1 id="finaleTitle">CONGRATULATIONS</h1>
+      <p id="finaleSubtitle">You Have Successfully Followed<br>The Journey Of Data<br>Inside A Computer</p>
+      <p id="finaleScore" style="color:#ffe27a;font-size:16px;"></p>
+      <button id="finaleClose">KEMBALI</button>
+    </div>
+  </div>
+
+  <div id="panel">
+    <div id="closeBtn">✕ TUTUP</div>
+    <h2 id="pTitle">-</h2>
+    <div class="row"><div class="lab">Fungsi</div><div class="val" id="pFunc">-</div></div>
+    <div class="row"><div class="lab">Cara Kerja</div><div class="val" id="pHow">-</div></div>
+    <div class="row"><div class="lab">Fakta Menarik</div><div class="val" id="pFact">-</div></div>
+    <div class="prosCons">
+      <div><div class="lab plus">Kelebihan</div><div class="val" id="pPlus">-</div></div>
+      <div><div class="lab minus">Kekurangan</div><div class="val" id="pMinus">-</div></div>
+    </div>
+  </div>
+</div>
+
+<a-scene fog="type: exponential; color: #050318; density: 0.014" background="color:#020210">
+
+  <a-assets>
+    <a-mixin id="glow" material="shader: standard; emissiveIntensity: 0.6"></a-mixin>
+  </a-assets>
+
+  <!-- LIGHTING -->
+  <a-light type="ambient" color="#1a2050" intensity="0.55"></a-light>
+  <a-light type="directional" color="#7db8ff" intensity="0.4" position="30 60 10"></a-light>
+  <a-light type="point" color="#2ad9ff" intensity="0.8" distance="60" position="0 15 -25"></a-light>
+  <a-light type="point" color="#c07dff" intensity="1" distance="80" position="0 25 -250"></a-light>
+  <a-light type="spot" color="#ffe27a" intensity="1.2" position="0 40 -395" angle="35" target="#portalCore"></a-light>
+
+  <a-sky color="#020210"></a-sky>
+  <a-entity id="starfield"></a-entity>
+
+  <!-- PLAYER RIG -->
+  <a-entity id="rig" position="0 1.6 4" odyssey-navigation>
+    <a-entity camera look-controls="pointerLockEnabled:true" position="0 0 0"></a-entity>
+    <a-entity cursor="rayOrigin: mouse" raycaster="objects:.clickable; far:120"
+      material="color:#7df9ff; shader:flat" geometry="primitive:ring; radiusInner:0.01; radiusOuter:0.015"></a-entity>
+  </a-entity>
+
+  <!-- GROUND -->
+  <a-plane id="mainGround" rotation="-90 0 0" width="140" height="500" position="0 0 -230" color="#050a20" metalness="0.3" roughness="0.7"></a-plane>
+  <a-entity id="gridLines"></a-entity>
+
+  <!-- ================= AREA 1: INPUT DEVICE ZONE ================= -->
+  <a-entity id="area1" position="0 0 -20">
+    <a-text value="AREA 1 // INPUT DEVICE ZONE" position="-9 9 -5" color="#7df9ff" width="20" align="center"></a-text>
+    <a-entity id="keyboardGroup" position="0 0 -10"></a-entity>
+    <a-entity id="binaryRain"></a-entity>
+
+    <a-entity class="clickable" data-id="keyboard" position="0 4.5 -10"
+      geometry="primitive:box; width:1; height:1; depth:1" material="color:#2ad9ff; opacity:0; transparent:true"></a-entity>
+  </a-entity>
+
+  <!-- ================= AREA 2: SYSTEM BUS HIGHWAY ================= -->
+  <a-entity id="area2" position="0 0 -60">
+    <a-text value="AREA 2 // SYSTEM BUS HIGHWAY" position="-9 9 0" color="#7df9ff" width="20" align="center"></a-text>
+
+    <!-- elevated glowing highway deck -->
+    <a-box width="30" height="0.4" depth="42" position="0 0.6 -10" color="#050b22" material="emissive:#0a1840; emissiveIntensity:0.4; metalness:0.6; roughness:0.3"></a-box>
+
+    <a-plane rotation="-90 0 0" width="8" height="40" position="-10 0.85 -10" color="#0a1840" material="emissive:#2ad9ff; emissiveIntensity:0.3" opacity="0.95"></a-plane>
+    <a-plane rotation="-90 0 0" width="8" height="40" position="0 0.85 -10" color="#141026" material="emissive:#ffe27a; emissiveIntensity:0.25" opacity="0.95"></a-plane>
+    <a-plane rotation="-90 0 0" width="8" height="40" position="10 0.85 -10" color="#0a1840" material="emissive:#c07dff; emissiveIntensity:0.3" opacity="0.95"></a-plane>
+
+    <!-- lane edge glow strips -->
+    <a-box width="0.15" height="0.05" depth="40" position="-14 0.9 -10" color="#2ad9ff" material="emissive:#2ad9ff; emissiveIntensity:1"></a-box>
+    <a-box width="0.15" height="0.05" depth="40" position="-6 0.9 -10" color="#2ad9ff" material="emissive:#2ad9ff; emissiveIntensity:1"></a-box>
+    <a-box width="0.15" height="0.05" depth="40" position="4 0.9 -10" color="#ffe27a" material="emissive:#ffe27a; emissiveIntensity:1"></a-box>
+    <a-box width="0.15" height="0.05" depth="40" position="6 0.9 -10" color="#ffe27a" material="emissive:#ffe27a; emissiveIntensity:1"></a-box>
+    <a-box width="0.15" height="0.05" depth="40" position="14 0.9 -10" color="#c07dff" material="emissive:#c07dff; emissiveIntensity:1"></a-box>
+    <a-box width="0.15" height="0.05" depth="40" position="6.01 0.9 -10" color="#c07dff" material="emissive:#c07dff; emissiveIntensity:1"></a-box>
+
+    <a-text value="DATA BUS" position="-10 0.95 8" rotation="-90 0 0" color="#2ad9ff" width="6"></a-text>
+    <a-text value="CONTROL BUS" position="0 0.95 8" rotation="-90 0 0" color="#ffe27a" width="6"></a-text>
+    <a-text value="ADDRESS BUS" position="10 0.95 8" rotation="-90 0 0" color="#c07dff" width="6"></a-text>
+
+    <!-- plasma energy conduit beneath the deck -->
+    <a-cylinder radius="1.1" height="42" rotation="90 0 0" position="0 -0.4 -10" color="#0a1840" material="emissive:#2ad9ff; emissiveIntensity:0.5; opacity:0.35; transparent:true" animation="property:material.emissiveIntensity; to:0.9; dir:alternate; loop:true; dur:1400"></a-cylinder>
+
+    <!-- holographic bridge arching over the highway -->
+    <a-torus radius="17" radius-tubular="0.12" rotation="0 0 0" position="0 11 -10" arc="180" color="#7df9ff" material="emissive:#7df9ff; emissiveIntensity:0.7; opacity:0.5; transparent:true"></a-torus>
+    <a-torus radius="17" radius-tubular="0.05" rotation="0 0 0" position="0 11 -10" arc="180" color="#ffe27a" material="emissive:#ffe27a; emissiveIntensity:0.9" animation="property:rotation; from:0 -4 0; to:0 4 0; dir:alternate; loop:true; dur:2600"></a-torus>
+
+    <!-- neon pillars lining the highway -->
+    <a-entity id="busPillars"></a-entity>
+
+    <a-entity id="dataCapsules"></a-entity>
+    <a-entity id="addressHolograms"></a-entity>
+    <a-entity id="controlSignals"></a-entity>
+    <a-entity id="busBinaryStream"></a-entity>
+    <a-entity id="busDrones"></a-entity>
+
+    <a-entity class="clickable" data-id="databus" geometry="primitive:cylinder; radius:0.6; height:1" position="-10 1.4 -10"
+      material="color:#2ad9ff; emissive:#2ad9ff; emissiveIntensity:0.5; opacity:0.35; transparent:true"></a-entity>
+    <a-entity class="clickable" data-id="addressbus" geometry="primitive:torus; radius:1; radiusTubular:0.08" position="10 2.4 -10"
+      material="color:#c07dff; emissive:#c07dff; emissiveIntensity:0.6" animation="property:rotation; to:0 360 0; loop:true; dur:6000; easing:linear"></a-entity>
+    <a-entity class="clickable" data-id="controlbus" geometry="primitive:cylinder; radius:1.4; height:2.5" position="0 1.9 -10"
+      material="color:#ffe27a; emissive:#ffe27a; emissiveIntensity:0.6" animation="property:rotation; to:0 360 0; loop:true; dur:4000; easing:linear"></a-entity>
+  </a-entity>
+
+  <!-- ================= AREA 3: RAM CITY ================= -->
+  <a-entity id="area3" position="0 0 -100">
+    <a-text value="AREA 3 // RAM CITY" position="-9 14 5" color="#7df9ff" width="22" align="center"></a-text>
+    <a-plane rotation="-90 0 0" width="60" height="70" position="0 0.02 -35" color="#070c28"></a-plane>
+    <a-entity id="ramCity"></a-entity>
+    <a-text id="ramMemStatus" value="MEMORY USAGE: --% USED / --% FREE" position="0 16 -5" align="center" color="#7dff9f" width="10"></a-text>
+    <a-entity class="clickable" data-id="ram" id="powerButton" position="0 1.2 -5"
+      geometry="primitive:box; width:2; height:0.6; depth:2" material="color:#ff5d5d; emissive:#ff5d5d; emissiveIntensity:0.7"></a-entity>
+    <a-text value="[ KLIK: POWER OFF SIMULATION ]" position="0 2 -5" align="center" color="#ff9d9d" width="8"></a-text>
+  </a-entity>
+
+  <!-- ================= AREA 4: CACHE FORTRESS ================= -->
+  <a-entity id="area4" position="0 0 -180">
+    <a-text value="AREA 4 // CACHE FORTRESS" position="-9 14 -5" color="#7df9ff" width="22" align="center"></a-text>
+
+    <a-entity class="clickable" data-id="l1cache" position="0 6 -15">
+      <a-cylinder radius="6" height="1" color="#ffd23f" emissive="#ffd23f" emissiveIntensity="0.5"></a-cylinder>
+      <a-text value="L1 CACHE" position="0 0.7 0" rotation="-90 0 0" align="center" color="#3a2a00" width="8"></a-text>
+    </a-entity>
+    <a-entity class="clickable" data-id="l2cache" position="0 3.5 -15">
+      <a-cylinder radius="8.5" height="1" color="#e0a83a" emissive="#e0a83a" emissiveIntensity="0.4"></a-cylinder>
+      <a-text value="L2 CACHE" position="0 0.7 0" rotation="-90 0 0" align="center" color="#2a1e00" width="8"></a-text>
+    </a-entity>
+    <a-entity class="clickable" data-id="l3cache" position="0 1 -15">
+      <a-cylinder radius="11" height="1" color="#b98724" emissive="#b98724" emissiveIntensity="0.3"></a-cylinder>
+      <a-text value="L3 CACHE" position="0 0.7 0" rotation="-90 0 0" align="center" color="#1a1200" width="8"></a-text>
+    </a-entity>
+
+    <a-entity class="clickable" data-id="cachetest" position="0 8.5 -15"
+      geometry="primitive:box; width:1.5; height:1.5; depth:1.5" material="color:#7df9ff; emissive:#7df9ff; emissiveIntensity:0.6"
+      animation="property:rotation; to:0 360 0; loop:true; dur:5000; easing:linear"></a-entity>
+    <a-text value="[ KLIK KUBUS: TES CACHE HIT / MISS ]" position="0 10 -15" align="center" color="#8ff9ff" width="9"></a-text>
+  </a-entity>
+
+  <!-- ================= AREA 5: CPU CORE ================= -->
+  <a-entity id="area5" position="0 0 -250">
+    <a-text value="AREA 5 // CPU CORE" position="-9 16 15" color="#ffe27a" width="26" align="center"></a-text>
+
+    <!-- Central Reactor -->
+    <a-entity class="clickable" data-id="cpu" position="0 8 0">
+      <a-sphere radius="4.5" color="#0af0ff" emissive="#0af0ff" emissiveIntensity="0.9" opacity="0.85" transparent="true"
+        animation="property:scale; to:1.08 1.08 1.08; dir:alternate; loop:true; dur:1400"></a-sphere>
+      <a-torus radius="6.5" radius-tubular="0.1" color="#c07dff" rotation="90 0 0" animation="property:rotation; to:90 360 0; loop:true; dur:5000; easing:linear"></a-torus>
+      <a-torus radius="7.5" radius-tubular="0.06" color="#ffe27a" rotation="45 30 0" animation="property:rotation; to:45 390 0; loop:true; dur:8000; easing:linear"></a-torus>
+    </a-entity>
+    <a-text value="CPU CORE // PUSAT ALAM SEMESTA DIGITAL" position="0 15 0" align="center" color="#8ff9ff" width="14"></a-text>
+    <a-text value="[ KLIK INTI: JALANKAN SIMULASI FETCH-DECODE-EXECUTE ]" position="0 13.4 0" align="center" color="#ffb56b" width="9"></a-text>
+
+    <!-- Control Unit -->
+    <a-entity id="controlUnit" position="-22 2 5">
+      <a-box class="clickable" data-id="controlunit" width="6" height="3" depth="6" color="#142250" emissive="#2ad9ff" emissiveIntensity="0.25"></a-box>
+      <a-text value="CONTROL UNIT" position="0 2.2 0" align="center" color="#7df9ff" width="8"></a-text>
+      <a-entity id="fdeStations"></a-entity>
+      <a-box id="fdeToken" width="0.6" height="0.6" depth="0.6" color="#ffe27a" emissive="#ffe27a" emissiveIntensity="0.8" position="-4 2 0"
+        animation="property:position; to:4 2 0; dir:alternate; loop:true; dur:3000; easing:easeInOutSine"></a-box>
+    </a-entity>
+
+    <!-- Register Chamber -->
+    <a-entity id="registerChamber" position="0 2 22">
+      <a-cylinder class="clickable" data-id="register" radius="5" height="0.6" color="#1a1240" emissive="#c07dff" emissiveIntensity="0.3"></a-cylinder>
+      <a-text value="REGISTER CHAMBER" position="0 2.4 0" align="center" color="#c07dff" width="9"></a-text>
+      <a-entity id="registerCylinders"></a-entity>
+    </a-entity>
+
+    <!-- ALU Chamber -->
+    <a-entity id="aluChamber" position="22 2 5">
+      <a-box class="clickable" data-id="alu" width="6" height="3" depth="6" color="#402014" emissive="#ff9d3f" emissiveIntensity="0.25"></a-box>
+      <a-text value="ALU CHAMBER" position="0 2.2 0" align="center" color="#ffb56b" width="8"></a-text>
+      <a-text id="aluEquation" value="5 + 3 = 8" position="0 2.6 3.1" align="center" color="#ffe27a" width="10"></a-text>
+    </a-entity>
+  </a-entity>
+
+  <!-- ================= AREA 6: STORAGE VAULT ================= -->
+  <a-entity id="area6" position="0 0 -320">
+    <a-text value="AREA 6 // STORAGE VAULT" position="-9 12 0" color="#7df9ff" width="22" align="center"></a-text>
+
+    <a-entity id="hddGroup" position="-14 4 -5">
+      <a-cylinder class="clickable" data-id="hdd" radius="4.5" height="0.4" rotation="90 0 0" color="#0e1840" metalness="0.7" roughness="0.2"
+        animation="property:rotation; to:90 0 360; loop:true; dur:2500; easing:linear"></a-cylinder>
+      <a-box id="hddHead" width="2" height="0.15" depth="0.15" color="#ffe27a" emissive="#ffe27a" emissiveIntensity="0.8" position="0 0 0.3"
+        animation="property:rotation; to:0 60 0; dir:alternate; loop:true; dur:1800"></a-box>
+      <a-text value="HARD DISK DRIVE" position="0 -3 0" align="center" color="#7df9ff" width="8"></a-text>
+    </a-entity>
+
+    <a-entity id="ssdGroup" position="14 3 -5">
+      <a-box class="clickable" data-id="ssd" width="6" height="0.5" depth="6" color="#0a0a1a" emissive="#0af0ff" emissiveIntensity="0.3"></a-box>
+      <a-entity id="ssdChannels"></a-entity>
+      <a-text value="SOLID STATE DRIVE" position="0 -2.5 0" align="center" color="#7df9ff" width="8"></a-text>
+    </a-entity>
+  </a-entity>
+
+  <!-- ================= AREA 7: GPU CHAMBER ================= -->
+  <a-entity id="area7" position="0 0 -360">
+    <a-text value="AREA 7 // GPU CHAMBER" position="-9 12 0" color="#7df9ff" width="22" align="center"></a-text>
+    <a-entity id="gpuDrones"></a-entity>
+    <a-entity class="clickable" data-id="gpu" position="0 1 0"
+      geometry="primitive:box; width:3; height:1; depth:3" material="color:#7dff9f; emissive:#7dff9f; emissiveIntensity:0.5"></a-entity>
+    <a-text value="[ KLIK: INFO PARALLEL PROCESSING ]" position="0 2 0" align="center" color="#9fffc2" width="9"></a-text>
+  </a-entity>
+
+  <!-- ================= AREA 8: MONITOR PORTAL ================= -->
+  <a-entity id="area8" position="0 0 -395">
+    <a-entity id="portalCore" class="clickable" data-id="output" position="0 8 0">
+      <a-torus radius="7" radius-tubular="0.5" color="#ffe27a" emissive="#ffe27a" emissiveIntensity="1"
+        animation="property:rotation; to:0 0 360; loop:true; dur:6000; easing:linear"></a-torus>
+      <a-circle radius="6.4" color="#000" material="shader:flat"></a-circle>
+      <a-text value="HELLO WORLD" position="0 0 0.05" align="center" color="#7df9ff" width="16"></a-text>
+      <a-entity id="portalParticles"></a-entity>
+    </a-entity>
+    <a-text value="AREA 8 // MONITOR PORTAL" position="0 16 0" align="center" color="#ffe27a" width="18"></a-text>
+  </a-entity>
+
+  <!-- ================= AREA 9: KNOWLEDGE HUB ================= -->
+  <a-entity id="area9" position="0 0 -440">
+    <a-text value="AREA 9 // KNOWLEDGE HUB" position="0 12 10" align="center" color="#7df9ff" width="22"></a-text>
+    <a-cylinder radius="20" height="0.3" color="#0a1030" position="0 0.05 -10"></a-cylinder>
+    <a-entity id="museumPedestals"></a-entity>
+  </a-entity>
+
+</a-scene>
+
+<script>
+(function(){
+
+let interactionMode=false;
+function setInteractionMode(active){
+  interactionMode=active;
+  const camera=document.querySelector('[camera]'), rig=document.getElementById('rig');
+  if(camera) camera.setAttribute('look-controls','enabled',!active);
+  if(active && document.pointerLockElement) document.exitPointerLock();
+  document.getElementById('modeStatus').textContent='MODE: '+(active?'INTERACTION':'EXPLORE');
+  document.getElementById('modeStatus').style.color=active?'#ffe27a':'#7dff9f';
+  if(rig && rig.components['odyssey-navigation'] && active) rig.components['odyssey-navigation'].clearKeys();
+}
+
+/* Movement is intentionally driven from the camera yaw only. Pitch therefore never
+   turns W into a vertical/backward movement. */
+AFRAME.registerComponent('odyssey-navigation', {
+  init(){
+    this.keys={}; this.velocity=new THREE.Vector3(); this.fly=true;
+    this.cameraEl=this.el.querySelector('[camera]');
+    this.teleports=[null,[0,1.6,-30],[-10,1.6,-70],[0,1.6,-112],[0,1.6,-170],[0,1.6,-235],[0,1.6,-315],[0,1.6,-355],[0,1.6,-383],[0,1.6,-430]];
+    this.onDown=e=>{ if(e.code==='Backspace'){ e.preventDefault(); setInteractionMode(!interactionMode); return; } this.keys[e.code]=true; if(e.code==='KeyF'){ this.fly=!this.fly; } if(/^Digit[1-9]$/.test(e.code)) this.teleport(+e.code.slice(-1)); };
+    this.onUp=e=>this.keys[e.code]=false;
+    this.clearKeys=()=>{ this.keys={}; this.velocity.set(0,0,0); };
+    window.addEventListener('keydown',this.onDown); window.addEventListener('keyup',this.onUp); window.addEventListener('blur',this.clearKeys); document.addEventListener('visibilitychange',()=>{if(document.hidden)this.clearKeys();});
+  },
+  remove(){ window.removeEventListener('keydown',this.onDown); window.removeEventListener('keyup',this.onUp); window.removeEventListener('blur',this.clearKeys); },
+  teleport(n){ const p=this.teleports[n]; if(!p) return; this.el.object3D.position.set(...p); this.velocity.set(0,0,0); },
+  tick(_t,dt){
+    if(!this.cameraEl || interactionMode) { this.clearKeys(); return; }
+    const delta=Math.min(dt/1000,.05), input=new THREE.Vector3();
+    if(this.keys.KeyW) input.z-=1; if(this.keys.KeyS) input.z+=1; if(this.keys.KeyA) input.x-=1; if(this.keys.KeyD) input.x+=1;
+    if(this.fly){ if(this.keys.Space) input.y+=1; if(this.keys.ShiftLeft||this.keys.ShiftRight) input.y-=1; }
+    if(input.lengthSq()>0) input.normalize();
+    const yaw=this.cameraEl.object3D.rotation.y;
+    // Apply the camera's yaw rotation to local WASD input (never its pitch).
+    const world=new THREE.Vector3(input.x*Math.cos(yaw)+input.z*Math.sin(yaw),input.y,-input.x*Math.sin(yaw)+input.z*Math.cos(yaw));
+    const target=world.multiplyScalar(0.35*12); // user setting: speed 0.35
+    this.velocity.lerp(target,Math.min(1,delta*9)); // smoothing
+    if(input.lengthSq()===0) this.velocity.multiplyScalar(Math.max(0,1-delta*10));
+    const next=this.el.object3D.position.clone().addScaledVector(this.velocity,delta);
+    if(!this.fly) next.y=1.6;
+    next.x=THREE.MathUtils.clamp(next.x,-62,62); next.z=THREE.MathUtils.clamp(next.z,-475,9); next.y=THREE.MathUtils.clamp(next.y,1.6,42);
+    // Large exhibit exclusion volumes; teleport remains allowed for direct access.
+    const blockers=[{x:0,z:-195,r:10},{x:0,z:-250,r:5.5},{x:0,z:-395,r:6}];
+    if(!this.fly && blockers.some(b=>Math.hypot(next.x-b.x,next.z-b.z)<b.r)) { this.velocity.multiplyScalar(.15); return; }
+    this.el.object3D.position.copy(next);
+  }
+});
+
+/* ================= COMPONENT DATA ================= */
+const DATA = {
+  keyboard: { title:"INPUT DEVICE — KEYBOARD", func:"Mengubah aksi fisik manusia (penekanan tombol) menjadi sinyal digital yang dapat diproses komputer.",
+    how:"Setiap tombol memiliki kode unik (scan code). Saat ditekan, controller keyboard mengirim sinyal ke komputer, yang diterjemahkan menjadi karakter biner, misalnya huruf A menjadi 01000001.",
+    fact:"Layout keyboard QWERTY awalnya dirancang untuk memperlambat pengetikan agar mesin tik mekanik tidak macet.",
+    plus:"Input presisi, mendukung banyak kombinasi tombol (shortcut).", minus:"Kecepatan input terbatas oleh kemampuan motorik manusia." },
+  databus: { title:"SYSTEM BUS — DATA BUS", func:"Jalur fisik yang mengangkut data aktual antar komponen komputer (CPU, RAM, I/O).",
+    how:"Data bus bersifat bidirectional — data dapat mengalir dua arah. Lebar bus (contoh 64-bit) menentukan seberapa banyak data yang dapat dipindah dalam satu waktu.",
+    fact:"Lebar data bus modern umumnya 64-bit, memungkinkan transfer 8 byte sekaligus per siklus.",
+    plus:"Transfer data cepat dan terstandarisasi.", minus:"Menjadi bottleneck jika lebar bus lebih kecil dari kebutuhan data." },
+  addressbus: { title:"SYSTEM BUS — ADDRESS BUS", func:"Membawa informasi alamat memori yang dituju, memberi tahu ke mana data harus dibaca atau ditulis.",
+    how:"Address bus bersifat unidirectional (satu arah), dari CPU menuju memori/I/O. Lebar address bus menentukan total memori yang dapat dialamati.",
+    fact:"Address bus 32-bit dapat mengalamati hingga 4GB memori (2^32 alamat).",
+    plus:"Memungkinkan akses langsung ke lokasi memori spesifik.", minus:"Lebar bus yang terbatas membatasi kapasitas memori maksimum." },
+  controlbus: { title:"SYSTEM BUS — CONTROL BUS", func:"Membawa sinyal kontrol dan koordinasi seperti read/write, clock, dan interrupt antar komponen.",
+    how:"Control bus mengatur waktu dan arah aliran data pada data bus dan address bus, memastikan seluruh komponen bekerja sinkron.",
+    fact:"Tanpa control bus, data bus dan address bus tidak akan tahu kapan harus 'membaca' atau 'menulis'.",
+    plus:"Menjaga sinkronisasi seluruh sistem.", minus:"Kompleksitas sinyal kontrol meningkat pada arsitektur modern." },
+  ram: { title:"RAM — RANDOM ACCESS MEMORY", func:"Menyimpan data dan instruksi program yang sedang aktif digunakan CPU untuk akses cepat.",
+    how:"Setiap sel memori memiliki alamat unik (contoh 0x1000). CPU dapat membaca/menulis ke alamat manapun secara acak dengan kecepatan hampir sama (random access).",
+    fact:"RAM bersifat volatile — begitu daya listrik dimatikan, seluruh data di dalamnya hilang seketika.",
+    plus:"Akses sangat cepat dibanding penyimpanan sekunder.", minus:"Volatile (data hilang saat mati listrik) dan kapasitas terbatas." },
+  l1cache: { title:"CACHE — LEVEL 1 (L1)", func:"Cache tercepat dan terdekat dengan core CPU, menyimpan data & instruksi yang paling sering digunakan.",
+    how:"Terintegrasi langsung dalam chip CPU per-core, kapasitas kecil (KB) namun latensi sangat rendah (beberapa siklus clock).",
+    fact:"L1 cache biasanya dipisah menjadi L1 instruksi dan L1 data agar fetch instruksi dan data bisa paralel.",
+    plus:"Latensi sangat rendah.", minus:"Kapasitas sangat kecil." },
+  l2cache: { title:"CACHE — LEVEL 2 (L2)", func:"Cache perantara, lebih besar dari L1 namun sedikit lebih lambat, sering per-core atau dibagi berpasangan.",
+    how:"Menampung data yang tidak muat di L1 tapi masih sering dipakai, mengurangi akses ke L3/RAM.",
+    fact:"L2 cache modern dapat berukuran ratusan KB hingga beberapa MB.",
+    plus:"Kapasitas lebih besar dari L1.", minus:"Latensi lebih tinggi dibanding L1." },
+  l3cache: { title:"CACHE — LEVEL 3 (L3)", func:"Cache terbesar yang dibagikan oleh seluruh core CPU, menjembatani cache dan RAM.",
+    how:"Karena dipakai bersama seluruh core, L3 membantu komunikasi antar-core dan mengurangi trafik ke RAM.",
+    fact:"L3 cache bisa mencapai puluhan MB pada CPU server modern.",
+    plus:"Kapasitas besar dan dibagi seluruh core.", minus:"Latensi paling tinggi di antara level cache." },
+  cachetest: { title:"CACHE HIT vs CACHE MISS", func:"Menentukan apakah data yang dibutuhkan CPU sudah ada di cache (hit) atau harus diambil dari memori utama (miss).",
+    how:"Saat CPU meminta data, ia mengecek cache terlebih dahulu. Jika ditemukan (hit), proses sangat cepat. Jika tidak (miss), CPU harus mengambil dari level cache lebih rendah atau RAM, yang jauh lebih lambat.",
+    fact:"Cache hit rate yang tinggi (>90%) sangat krusial untuk performa CPU modern.",
+    plus:"Cache hit mempercepat eksekusi secara drastis.", minus:"Cache miss menyebabkan penalti waktu yang signifikan." },
+  cpu: { title:"CPU — CENTRAL PROCESSING UNIT", func:"Otak komputer yang mengeksekusi instruksi program melalui siklus fetch-decode-execute.",
+    how:"CPU mengambil instruksi dari memori, mendekodekan artinya, lalu mengeksekusinya menggunakan Control Unit, Register, dan ALU secara bersinergi.",
+    fact:"CPU modern dapat mengeksekusi miliaran instruksi per detik (GHz clock speed) dan memiliki banyak core untuk paralelisme.",
+    plus:"Kemampuan komputasi general-purpose yang sangat fleksibel.", minus:"Mengonsumsi daya besar dan menghasilkan panas tinggi saat performa maksimal." },
+  controlunit: { title:"CONTROL UNIT (CU)", func:"Mengatur dan mengoordinasikan seluruh operasi CPU melalui siklus Fetch → Decode → Execute.",
+    how:"CU mengambil instruksi dari memori (fetch), menerjemahkan artinya (decode), lalu mengirim sinyal kontrol ke ALU/register untuk menjalankannya (execute).",
+    fact:"Control Unit sering disebut 'dirigen orkestra' karena mengatur timing seluruh komponen CPU.",
+    plus:"Mengotomatisasi eksekusi instruksi secara presisi.", minus:"Kesalahan pada CU dapat menghentikan seluruh sistem." },
+  register: { title:"REGISTER CHAMBER", func:"Lokasi penyimpanan data berkapasitas sangat kecil namun tercepat di seluruh sistem komputer.",
+    how:"Register terletak langsung di dalam CPU, digunakan untuk menyimpan nilai sementara selama komputasi berlangsung, seperti operand ALU atau alamat instruksi berikutnya.",
+    fact:"Register beroperasi pada kecepatan clock CPU itu sendiri, jauh lebih cepat dari RAM sekalipun.",
+    plus:"Kecepatan akses tercepat di seluruh hierarki memori.", minus:"Kapasitas sangat terbatas, hanya menyimpan beberapa word data." },
+  alu: { title:"ALU — ARITHMETIC LOGIC UNIT", func:"Melakukan seluruh operasi aritmatika (tambah, kurang, kali, bagi) dan operasi logika (AND, OR, NOT).",
+    how:"ALU menerima input dari register, melakukan operasi sesuai instruksi dari Control Unit, lalu mengembalikan hasilnya ke register atau memori.",
+    fact:"ALU adalah komponen inti yang membuat CPU mampu 'menghitung', bukan hanya memindahkan data.",
+    plus:"Sangat cepat untuk operasi matematis dan logika dasar.", minus:"Hanya menjalankan operasi yang sudah didefinisikan dalam set instruksi." },
+  hdd: { title:"HDD — HARD DISK DRIVE", func:"Penyimpanan sekunder non-volatile menggunakan piringan magnetik untuk menyimpan data secara permanen.",
+    how:"Data disimpan sebagai perubahan magnetis pada piringan yang berputar cepat. Head reader/writer bergerak secara radial untuk membaca/menulis data di posisi tertentu.",
+    fact:"HDD modern dapat berputar hingga 7200 RPM atau lebih untuk mempercepat akses data.",
+    plus:"Kapasitas besar dengan biaya per-GB rendah.", minus:"Lebih lambat dan rentan kerusakan mekanis dibanding SSD." },
+  ssd: { title:"SSD — SOLID STATE DRIVE", func:"Penyimpanan sekunder non-volatile menggunakan chip memori flash tanpa komponen bergerak.",
+    how:"Data disimpan dalam sel-sel memori flash NAND. Karena tanpa bagian mekanis, akses data jauh lebih cepat dibanding piringan magnetik.",
+    fact:"SSD tidak memiliki bagian bergerak sehingga lebih tahan guncangan dan lebih senyap dari HDD.",
+    plus:"Kecepatan baca/tulis jauh lebih tinggi, tahan guncangan.", minus:"Biaya per-GB lebih mahal dan sel flash memiliki batas siklus tulis." },
+  gpu: { title:"GPU — GRAPHICS PROCESSING UNIT", func:"Prosesor khusus untuk memproses grafis dan komputasi paralel besar-besaran secara bersamaan.",
+    how:"GPU memiliki ribuan core kecil yang bekerja paralel, cocok untuk tugas yang bisa dipecah menjadi banyak operasi identik seperti rendering piksel atau machine learning.",
+    fact:"GPU modern dapat memiliki lebih dari 10.000 core kecil, dibanding CPU yang biasanya hanya puluhan core besar.",
+    plus:"Sangat unggul untuk komputasi paralel masif (grafis, AI).", minus:"Kurang efisien untuk tugas sekuensial dibanding CPU." },
+  output: { title:"OUTPUT — MONITOR PORTAL", func:"Menampilkan hasil akhir pemrosesan data kepada pengguna dalam bentuk visual.",
+    how:"Data digital dari GPU dikonversi menjadi sinyal gambar, kemudian piksel-piksel pada layar menyala sesuai warna dan intensitas yang ditentukan untuk membentuk gambar.",
+    fact:"Layar modern dapat menampilkan jutaan piksel yang diperbarui puluhan hingga ratusan kali per detik (refresh rate).",
+    plus:"Menjembatani dunia digital dengan persepsi visual manusia.", minus:"Kualitas tampilan bergantung pada resolusi dan refresh rate perangkat." }
+};
+
+/* ================= INFO PANEL ================= */
+const panel = document.getElementById('panel');
+function openPanel(id){
+  const d = DATA[id]; if(!d) return;
+  document.getElementById('pTitle').textContent = d.title;
+  document.getElementById('pFunc').textContent = d.func;
+  document.getElementById('pHow').textContent = d.how;
+  document.getElementById('pFact').textContent = d.fact;
+  document.getElementById('pPlus').textContent = d.plus;
+  document.getElementById('pMinus').textContent = d.minus;
+  panel.classList.add('show');
+  setInteractionMode(true);
+  playSound('hover');
+}
+document.getElementById('closeBtn').addEventListener('click', ()=> { panel.classList.remove('show'); setInteractionMode(false); });
+
+/* A-Frame click delegation */
+document.addEventListener('DOMContentLoaded', init);
+function init(){
+  const scene = document.querySelector('a-scene');
+  scene.addEventListener('loaded', buildWorld);
+}
+
+function buildWorld(){
+  attachClickHandlers();
+  buildStars(1800);
+  buildLivingSky();
+  buildKeyboard();
+  buildBinaryRain();
+  buildBusHighway();
+  buildRamCity();
+  buildFDEStations();
+  buildRegisterCylinders();
+  buildSSDChannels();
+  buildGpuDrones();
+  buildPortalParticles();
+  buildMuseum();
+  buildDataJourney();
+  buildCpuSpectacle();
+  buildPassportStamps();
+  initQuiz();
+  initCpuSim();
+  startTickLoop();
+  startAluCycle();
+  initAudio();
+}
+
+function attachClickHandlers(){
+  document.querySelectorAll('.clickable').forEach(el=>{
+    el.addEventListener('click', ()=> {
+      const id=el.getAttribute('data-id');
+      playSound('click');
+      if(id==='output') runPortalCutscene();
+      else if(id==='ram') powerRam();
+      else if(id==='cpu') openCpuSim();
+      else openPanel(id);
+    });
+    el.addEventListener('mouseenter', ()=> playSound('hover'));
+  });
+}
+
+/* ================= START OVERLAY ================= */
+document.getElementById('startBtn').addEventListener('click', function(){
+  document.getElementById('startOverlay').style.display = 'none';
+  const canvas = document.querySelector('canvas');
+  if(canvas) canvas.focus();
+  startAmbience();
+});
+
+/* ================= STARFIELD ================= */
+function buildStars(n){
+  const container = document.getElementById('starfield');
+  const geometry=new THREE.SphereGeometry(.18,5,4), material=new THREE.MeshBasicMaterial({color:'#bfefff'}), stars=new THREE.InstancedMesh(geometry,material,n), matrix=new THREE.Matrix4();
+  for(let i=0;i<n;i++){
+    const r = 180 + Math.random()*60;
+    const theta = Math.random()*Math.PI*2;
+    const y = Math.random()*90;
+    const x = Math.cos(theta)*r;
+    const z = -Math.random()*500 + Math.sin(theta)*r*0.2;
+    matrix.makeTranslation(x,y,z); matrix.scale(new THREE.Vector3(.6+Math.random()*1.5,.6+Math.random()*1.5,.6+Math.random()*1.5)); stars.setMatrixAt(i,matrix);
+  }
+  stars.instanceMatrix.needsUpdate=true; container.object3D.add(stars);
+  container.setAttribute('animation','property:rotation; to:0 360 0; loop:true; dur:180000; easing:linear');
+}
+
+/* Living sky: static layers are instanced; a small reusable meteor pool avoids
+   continually allocating objects while the world is running. */
+let meteorPool=[];
+function buildLivingSky(){
+  const scene=document.querySelector('a-scene'), nebula=document.createElement('a-entity'); nebula.id='nebulaLayer';
+  [['#146b9a','-100 65 -220','80'],['#55239b','85 55 -300','95'],['#164fa2','0 90 -410','110']].forEach(([color,pos,scale])=>{const n=document.createElement('a-sphere');n.setAttribute('radius',scale);n.setAttribute('position',pos);n.setAttribute('color',color);n.setAttribute('material','shader:flat; opacity:.055; transparent:true; side:back');nebula.appendChild(n);}); scene.appendChild(nebula);
+  ['CPU','RAM','GPU','SSD'].forEach((word,i)=>{const t=document.createElement('a-text');t.setAttribute('value',word);t.setAttribute('position',`${-72+i*46} ${48+(i%2)*13} ${-170-i*58}`);t.setAttribute('rotation','0 '+(i%2?20:-20)+' 0');t.setAttribute('width','22');t.setAttribute('color',i%2?'#c07dff':'#2ad9ff');t.setAttribute('opacity','.5');scene.appendChild(t);});
+  const rain=document.createElement('a-entity'); rain.id='skyDataRain'; for(let i=0;i<100;i++){const d=document.createElement('a-text');const x=-75+Math.random()*150,z=-60-Math.random()*430,y=15+Math.random()*80;d.setAttribute('value',Math.random()>.5?'1':'0');d.setAttribute('position',`${x} ${y} ${z}`);d.setAttribute('color','#2ad9ff');d.setAttribute('opacity','.27');d.setAttribute('width','3');d.setAttribute('animation',`property:position; to:${x} ${y-38} ${z}; loop:true; dur:${7000+Math.random()*6500}; easing:linear`);rain.appendChild(d);}scene.appendChild(rain);
+  for(let i=0;i<10;i++){const meteor=document.createElement('a-entity');const core=document.createElement('a-sphere');core.setAttribute('radius','.25');core.setAttribute('color','#d7ffff');core.setAttribute('material','emissive:#2ad9ff; emissiveIntensity:1');meteor.appendChild(core);const trail=document.createElement('a-cylinder');trail.setAttribute('radius','.06');trail.setAttribute('height','5');trail.setAttribute('rotation','0 0 52');trail.setAttribute('position','-1.7 1.7 0');trail.setAttribute('color','#2ad9ff');trail.setAttribute('material','emissive:#2ad9ff; emissiveIntensity:.9');meteor.appendChild(trail);meteor.setAttribute('visible',false);scene.appendChild(meteor);meteorPool.push(meteor);}
+  setInterval(spawnMeteor,3000+Math.random()*7000);
+}
+function spawnMeteor(){ const m=meteorPool.find(x=>!x.getAttribute('visible')); if(!m)return; const x=-90+Math.random()*180,y=45+Math.random()*55,z=-120-Math.random()*360;m.setAttribute('position',`${x} ${y} ${z}`);m.setAttribute('visible',true);m.setAttribute('animation','property:position; to:'+(x+30+Math.random()*35)+' '+(y-18-Math.random()*24)+' '+(z-30)+'; dur:1050; easing:linear');setTimeout(()=>m.setAttribute('visible',false),1150); }
+
+/* ================= AREA 1: KEYBOARD ================= */
+const KEY_ROWS = ["QWERTYUIOP","ASDFGHJKL","ZXCVBNM123"];
+let keyEntities = [];
+function buildKeyboard(){
+  const group = document.getElementById('keyboardGroup');
+  const startX = -13, spacing = 2.7;
+  KEY_ROWS.forEach((row, rIdx)=>{
+    for(let cIdx=0; cIdx<row.length; cIdx++){
+      const letter = row[cIdx];
+      const key = document.createElement('a-box');
+      const x = startX + cIdx*spacing + rIdx*0.8;
+      const y = 1.2;
+      const z = -rIdx*2.8;
+      key.setAttribute('width','2.2');
+      key.setAttribute('height','2');
+      key.setAttribute('depth','2.2');
+      key.setAttribute('position', `${x} ${y} ${z}`);
+      key.setAttribute('color', '#0a1840');
+      key.setAttribute('material', 'emissive:#2ad9ff; emissiveIntensity:0.25; metalness:0.4; roughness:0.4');
+      key.classList.add('keycube');
+      group.appendChild(key);
+
+      const label = document.createElement('a-text');
+      label.setAttribute('value', letter);
+      label.setAttribute('position', `${x} ${y+1.15} ${z}`);
+      label.setAttribute('rotation','-90 0 0');
+      label.setAttribute('align','center');
+      label.setAttribute('color','#8ff9ff');
+      label.setAttribute('width','6');
+      group.appendChild(label);
+      keyEntities.push({label, letter, toggled:false});
+    }
+  });
+}
+function toggleKeyBinary(){
+  // pick a handful of random keys and flip label between letter and binary
+  for(let i=0;i<6;i++){
+    const k = keyEntities[Math.floor(Math.random()*keyEntities.length)];
+    if(!k) continue;
+    k.toggled = !k.toggled;
+    if(k.toggled){
+      const bin = k.letter.charCodeAt(0).toString(2).padStart(8,'0');
+      k.label.setAttribute('value', bin);
+      k.label.setAttribute('color', '#ffe27a');
+    } else {
+      k.label.setAttribute('value', k.letter);
+      k.label.setAttribute('color', '#8ff9ff');
+    }
+  }
+}
+
+/* ================= AREA 1: BINARY RAIN ================= */
+let rainDrops = [];
+function buildBinaryRain(){
+  const container = document.getElementById('binaryRain');
+  for(let i=0;i<35;i++){
+    const t = document.createElement('a-text');
+    const x = -16 + Math.random()*32;
+    const z = -2 - Math.random()*24;
+    const startY = 4 + Math.random()*14;
+    t.setAttribute('value', Math.random()>0.5 ? '1':'0');
+    t.setAttribute('position', `${x} ${startY} ${z}`);
+    t.setAttribute('color', '#2ad9ff');
+    t.setAttribute('width','4');
+    t.setAttribute('opacity','0.75');
+    container.appendChild(t);
+    rainDrops.push({el:t, y:startY, speed:0.03+Math.random()*0.05, x, z});
+  }
+}
+
+/* ================= AREA 2: BUS HIGHWAY (full rebuild) ================= */
+let capsules = [], controlPulses = [], busBinaryBits = [];
+function buildBusHighway(){
+  // DATA BUS lane: flowing capsules + a running 10101010 binary stream
+  const dataContainer = document.getElementById('dataCapsules');
+  for(let i=0;i<7;i++){
+    const c = document.createElement('a-sphere');
+    c.setAttribute('radius','0.5');
+    c.setAttribute('color','#2ad9ff');
+    c.setAttribute('material','emissive:#2ad9ff; emissiveIntensity:1; shader:standard');
+    const z = 10 - i*6;
+    c.setAttribute('position', `-10 1.4 ${z}`);
+    dataContainer.appendChild(c);
+    capsules.push({el:c, z, speed:0.07+Math.random()*0.03});
+  }
+  const streamContainer = document.getElementById('busBinaryStream');
+  for(let i=0;i<16;i++){
+    const bit = document.createElement('a-text');
+    const z = 10 - i*2.6;
+    bit.setAttribute('value', i%2===0?'1':'0');
+    bit.setAttribute('position', `-10 0.2 ${z}`);
+    bit.setAttribute('rotation','-90 0 0');
+    bit.setAttribute('color','#7df9ff');
+    bit.setAttribute('width','5');
+    bit.setAttribute('opacity','0.85');
+    streamContainer.appendChild(bit);
+    busBinaryBits.push({el:bit, z, speed:0.09});
+  }
+
+  // ADDRESS BUS lane: 0x00-style memory addresses marching along the left edge
+  const addrContainer = document.getElementById('addressHolograms');
+  for(let i=0;i<8;i++){
+    const t = document.createElement('a-text');
+    const z = 10 - i*2.8;
+    const addr = '0x'+(i+1).toString(16).toUpperCase().padStart(3,'0');
+    t.setAttribute('value', addr);
+    t.setAttribute('position', `10 2.6 ${z}`);
+    t.setAttribute('color','#c07dff');
+    t.setAttribute('width','5');
+    t.setAttribute('align','center');
+    addrContainer.appendChild(t);
+  }
+
+  // CONTROL BUS lane: READ / WRITE / CLOCK / INT signals pulsing down the center
+  const controlContainer = document.getElementById('controlSignals');
+  const signals=['READ','WRITE','CLOCK','INTERRUPT'];
+  for(let i=0;i<8;i++){
+    const t = document.createElement('a-text');
+    const z = 9 - i*2.6;
+    t.setAttribute('value', signals[i%signals.length]);
+    t.setAttribute('position', `0 2.1 ${z}`);
+    t.setAttribute('color','#ffe27a');
+    t.setAttribute('width','5');
+    t.setAttribute('align','center');
+    controlContainer.appendChild(t);
+    controlPulses.push({el:t, z, speed:0.05+Math.random()*0.02});
+  }
+
+  // data drones flying above the highway deck
+  const droneContainer = document.getElementById('busDrones');
+  for(let i=0;i<5;i++){
+    const drone = document.createElement('a-entity');
+    const body = document.createElement('a-box');
+    body.setAttribute('width','0.5'); body.setAttribute('height','0.15'); body.setAttribute('depth','0.5');
+    body.setAttribute('color','#0a1840'); body.setAttribute('material','emissive:#7df9ff; emissiveIntensity:0.8');
+    drone.appendChild(body);
+    const glow = document.createElement('a-sphere');
+    glow.setAttribute('radius','0.08'); glow.setAttribute('color','#7df9ff'); glow.setAttribute('material','shader:flat');
+    glow.setAttribute('position','0 -0.15 0');
+    drone.appendChild(glow);
+    const x = -12+Math.random()*24, y = 5.5+Math.random()*3, z = 8-Math.random()*36;
+    drone.setAttribute('position', `${x} ${y} ${z}`);
+    drone.setAttribute('animation', `property:position; to:${x+(Math.random()*6-3)} ${y+1.5} ${z-8}; dir:alternate; loop:true; dur:${3500+Math.random()*2500}; easing:easeInOutSine`);
+    droneContainer.appendChild(drone);
+  }
+
+  // neon pillars lining the highway edges — reinforces the "digital highway" feel
+  const pillarContainer = document.getElementById('busPillars');
+  for(let i=0;i<9;i++){
+    const z = 9 - i*2.4;
+    [-16,16].forEach(x=>{
+      const pillar = document.createElement('a-cylinder');
+      pillar.setAttribute('radius','0.18'); pillar.setAttribute('height','9');
+      pillar.setAttribute('position', `${x} 5 ${z}`);
+      pillar.setAttribute('color','#0a1840');
+      pillar.setAttribute('material', `emissive:${i%2?'#2ad9ff':'#c07dff'}; emissiveIntensity:0.85`);
+      pillar.setAttribute('animation', `property:material.emissiveIntensity; to:0.3; dir:alternate; loop:true; dur:${900+i*70}`);
+      pillarContainer.appendChild(pillar);
+    });
+  }
+}
+
+/* ================= AREA 3: RAM CITY ================= */
+let ramLights = [], ramBuildingsTotal = 0, ramUsedCount = 0;
+function buildRamCity(){
+  const city = document.getElementById('ramCity');
+  const cols = 10, rows = 10;
+  const spacing = 5.6;
+  let addr = 0x1000;
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      const height = 3 + Math.random()*9;
+      const used = Math.random() > 0.4; // occupied vs free memory cell
+      const x = -25 + c*spacing;
+      const z = -8 - r*6.2;
+      const building = document.createElement('a-box');
+      building.setAttribute('width','2.6');
+      building.setAttribute('height', height);
+      building.setAttribute('depth','2.6');
+      building.setAttribute('position', `${x} ${height/2} ${z}`);
+      building.setAttribute('color','#0a1230');
+      building.setAttribute('material', used
+        ? 'emissive:#2ad9ff; emissiveIntensity:0.5; metalness:0.5; roughness:0.5'
+        : 'emissive:#12203f; emissiveIntensity:0.12; metalness:0.5; roughness:0.5');
+      city.appendChild(building);
+
+      const light = document.createElement('a-sphere');
+      light.setAttribute('radius','0.25');
+      light.setAttribute('position', `${x} ${height+0.4} ${z}`);
+      light.setAttribute('color', used ? '#7df9ff' : '#2a3a55');
+      light.setAttribute('material','shader:flat');
+      city.appendChild(light);
+      ramLights.push({building, light, used});
+      ramBuildingsTotal++; if(used) ramUsedCount++;
+
+      // every cell gets a memory address label at its rooftop
+      const label = document.createElement('a-text');
+      label.setAttribute('value', '0x' + addr.toString(16).toUpperCase().padStart(4,'0'));
+      label.setAttribute('position', `${x} ${height+0.9} ${z}`);
+      label.setAttribute('rotation','-90 0 0');
+      label.setAttribute('align','center');
+      label.setAttribute('color', used ? '#ffe27a' : '#3a4a66');
+      label.setAttribute('width','3.6');
+      city.appendChild(label);
+      addr += 1;
+    }
+  }
+  updateMemStatus();
+  // periodic allocation animation: a free cell "lights up" as newly allocated, then frees another
+  setInterval(()=>{
+    if(!ramOn) return;
+    const idx = Math.floor(Math.random()*ramLights.length);
+    const cell = ramLights[idx];
+    cell.used = !cell.used;
+    if(cell.used) ramUsedCount++; else ramUsedCount--;
+    cell.building.setAttribute('material', cell.used
+      ? 'emissive:#2ad9ff; emissiveIntensity:0.5; metalness:0.5; roughness:0.5'
+      : 'emissive:#12203f; emissiveIntensity:0.12; metalness:0.5; roughness:0.5');
+    cell.light.setAttribute('color', cell.used ? '#7df9ff' : '#2a3a55');
+    if(cell.used){
+      cell.building.setAttribute('animation__alloc','property:scale; from:1 0.2 1; to:1 1 1; dur:500; easing:easeOutElastic');
+    }
+    updateMemStatus();
+  }, 1800);
+}
+function updateMemStatus(){
+  const el = document.getElementById('ramMemStatus');
+  if(!el || !ramBuildingsTotal) return;
+  const pctUsed = Math.round((ramUsedCount/ramBuildingsTotal)*100);
+  el.setAttribute('value', `MEMORY USAGE: ${pctUsed}% USED / ${100-pctUsed}% FREE`);
+}
+let ramOn = true;
+function powerRam(){
+  ramOn = !ramOn;
+  ramLights.forEach(({building, light, used})=>{
+    building.setAttribute('material', (ramOn && used) ? 'emissive:#2ad9ff; emissiveIntensity:0.5; metalness:0.5; roughness:0.5' : 'emissive:#000000; emissiveIntensity:0; metalness:0.5; roughness:0.5');
+    light.setAttribute('visible', ramOn);
+  });
+  if(!ramOn){ const a=document.getElementById('volatileAlert'); a.classList.add('show'); playSound('alert'); setTimeout(()=>a.classList.remove('show'),2300); }
+  else { ramLights.forEach(cell=>{ cell.building.setAttribute('material', cell.used ? 'emissive:#2ad9ff; emissiveIntensity:0.5; metalness:0.5; roughness:0.5' : 'emissive:#12203f; emissiveIntensity:0.12; metalness:0.5; roughness:0.5'); }); }
+}
+
+/* ================= AREA 4: CACHE HIT/MISS ================= */
+document.addEventListener('DOMContentLoaded', ()=>{
+  const scene = document.querySelector('a-scene');
+  scene.addEventListener('loaded', ()=>{
+    const tester = document.querySelector('[data-id="cachetest"]');
+    if(tester){
+      tester.addEventListener('click', ()=>{
+        const isHit = Math.random() > 0.35;
+        if(isHit){ launchPacket([[0,9,-195],[0,8,-250]],'#7dff9f'); }
+        else { launchPacket([[0,9,-195],[0,4,-112],[0,8,-250]],'#ff7d7d'); }
+      });
+    }
+  });
+});
+
+/* ================= AREA 5: CONTROL UNIT FDE STATIONS ================= */
+function buildFDEStations(){
+  const container = document.getElementById('fdeStations');
+  const stations = [{n:'FETCH', x:-4},{n:'DECODE', x:0},{n:'EXECUTE', x:4}];
+  stations.forEach(s=>{
+    const t = document.createElement('a-text');
+    t.setAttribute('value', s.n);
+    t.setAttribute('position', `${s.x} 2.6 0`);
+    t.setAttribute('align','center');
+    t.setAttribute('color','#7df9ff');
+    t.setAttribute('width','6');
+    container.appendChild(t);
+    const pad = document.createElement('a-cylinder');
+    pad.setAttribute('radius','0.7');
+    pad.setAttribute('height','0.15');
+    pad.setAttribute('position', `${s.x} 1.65 0`);
+    pad.setAttribute('color','#0a1840');
+    pad.setAttribute('material','emissive:#2ad9ff; emissiveIntensity:0.4');
+    container.appendChild(pad);
+  });
+}
+
+/* ================= AREA 5: REGISTER CYLINDERS ================= */
+function buildRegisterCylinders(){
+  const container = document.getElementById('registerCylinders');
+  for(let i=0;i<6;i++){
+    const angle = (i/6)*Math.PI*2;
+    const x = Math.cos(angle)*3.2;
+    const z = Math.sin(angle)*3.2;
+    const cyl = document.createElement('a-cylinder');
+    cyl.setAttribute('radius','0.4');
+    cyl.setAttribute('height','1.6');
+    cyl.setAttribute('position', `${x} 1.1 ${z}`);
+    cyl.setAttribute('color','#c07dff');
+    cyl.setAttribute('material','emissive:#c07dff; emissiveIntensity:0.8');
+    cyl.setAttribute('animation', `property: material.emissiveIntensity; to: 0.2; dir: alternate; loop: true; dur: ${400+i*80}`);
+    container.appendChild(cyl);
+  }
+}
+
+/* ================= AREA 5: ALU EQUATION CYCLE ================= */
+function startAluCycle(){
+  const eqs = ['5 + 3 = 8', '10 x 4 = 40', '12 - 7 = 5', '9 / 3 = 3', 'true AND false = false', 'true OR false = true'];
+  let idx = 0;
+  const el = document.getElementById('aluEquation');
+  setInterval(()=>{
+    idx = (idx+1)%eqs.length;
+    if(el) el.setAttribute('value', eqs[idx]);
+  }, 2200);
+}
+
+/* ================= AREA 5: CPU FETCH-DECODE-EXECUTE SIMULATION ================= */
+const CPU_SIM_PROGRAM = [
+  {instr:'LOAD R1, 5', fetch:'0x2001: LOAD R1,5', decode:'op=LOAD dst=R1 val=5', execute:'R1 ← 5', output:null},
+  {instr:'LOAD R2, 3', fetch:'0x2002: LOAD R2,3', decode:'op=LOAD dst=R2 val=3', execute:'R2 ← 3', output:null},
+  {instr:'ADD R1, R2', fetch:'0x2003: ADD R1,R2', decode:'op=ADD a=R1 b=R2', execute:'R1 ← R1 + R2', output:'HASIL: 5 + 3 = 8'}
+];
+function initCpuSim(){
+  document.getElementById('cpuSimClose').addEventListener('click', ()=>{
+    document.getElementById('cpuSim').classList.remove('show');
+    setInteractionMode(false);
+  });
+}
+function openCpuSim(){
+  document.getElementById('cpuSim').classList.add('show');
+  setInteractionMode(true);
+  runCpuSimSequence();
+}
+function runCpuSimSequence(){
+  const fFetch=document.getElementById('fdeFetch'), fDecode=document.getElementById('fdeDecode'), fExecute=document.getElementById('fdeExecute');
+  const vFetch=document.getElementById('fdeFetchVal'), vDecode=document.getElementById('fdeDecodeVal'), vExecute=document.getElementById('fdeExecuteVal');
+  const input=document.getElementById('cpuSimInput'), out=document.getElementById('cpuSimOutput');
+  [fFetch,fDecode,fExecute].forEach(s=>s.classList.remove('active'));
+  vFetch.textContent='-'; vDecode.textContent='-'; vExecute.textContent='-'; out.textContent='';
+  let step=0;
+  const runStep=()=>{
+    if(step>=CPU_SIM_PROGRAM.length){ out.textContent = CPU_SIM_PROGRAM[CPU_SIM_PROGRAM.length-1].output; return; }
+    const instr=CPU_SIM_PROGRAM[step];
+    input.textContent = instr.instr;
+    [fFetch,fDecode,fExecute].forEach(s=>s.classList.remove('active'));
+    fFetch.classList.add('active'); vFetch.textContent=instr.fetch; vDecode.textContent='-'; vExecute.textContent='-';
+    setTimeout(()=>{
+      fFetch.classList.remove('active'); fDecode.classList.add('active'); vDecode.textContent=instr.decode;
+      setTimeout(()=>{
+        fDecode.classList.remove('active'); fExecute.classList.add('active'); vExecute.textContent=instr.execute;
+        if(instr.output) out.textContent=instr.output;
+        setTimeout(()=>{ step++; runStep(); }, 850);
+      }, 750);
+    }, 750);
+  };
+  runStep();
+}
+
+/* ================= AREA 6: SSD CHANNELS ================= */
+let ssdFlows = [];
+function buildSSDChannels(){
+  const container = document.getElementById('ssdChannels');
+  for(let i=0;i<5;i++){
+    const z = -2.4 + i*1.2;
+    const track = document.createElement('a-box');
+    track.setAttribute('width','5.6');
+    track.setAttribute('height','0.06');
+    track.setAttribute('depth','0.15');
+    track.setAttribute('position', `0 0.3 ${z}`);
+    track.setAttribute('color','#0a1840');
+    container.appendChild(track);
+
+    const flow = document.createElement('a-box');
+    flow.setAttribute('width','0.6');
+    flow.setAttribute('height','0.1');
+    flow.setAttribute('depth','0.2');
+    flow.setAttribute('color','#0af0ff');
+    flow.setAttribute('material','emissive:#0af0ff; emissiveIntensity:1');
+    flow.setAttribute('position', `-2.8 0.32 ${z}`);
+    container.appendChild(flow);
+    ssdFlows.push({el:flow, x:-2.8, z, speed:0.04+Math.random()*0.03});
+  }
+}
+
+/* ================= AREA 7: GPU DRONES ================= */
+function buildGpuDrones(){
+  const container = document.getElementById('gpuDrones');
+  const cols=16, rows=16, spacing=1.35;
+  const mesh=new THREE.InstancedMesh(new THREE.SphereGeometry(.22,8,6),new THREE.MeshBasicMaterial({color:'#7dff9f'}),256);
+  const matrix=new THREE.Matrix4();
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      const x = -10.1 + c*spacing, z = -3 - r*spacing;
+      matrix.makeTranslation(x,2,z); mesh.setMatrixAt(r*cols+c,matrix);
+    }
+  }
+  mesh.instanceMatrix.needsUpdate=true; container.object3D.add(mesh);
+  const label=document.createElement('a-text'); label.setAttribute('value','1 CPU CORE  vs  256 GPU CORES\nPARALLEL PROCESSING ARRAY'); label.setAttribute('position','0 7 -12'); label.setAttribute('align','center'); label.setAttribute('color','#9fffc2'); label.setAttribute('width','14'); container.appendChild(label);
+  container.setAttribute('animation','property:rotation; to:0 360 0; loop:true; dur:26000; easing:linear');
+}
+
+/* ================= AREA 8: PORTAL PARTICLES ================= */
+function buildPortalParticles(){
+  const container = document.getElementById('portalParticles');
+  for(let i=0;i<40;i++){
+    const angle = Math.random()*Math.PI*2;
+    const r = 3 + Math.random()*3.5;
+    const p = document.createElement('a-sphere');
+    p.setAttribute('radius', 0.06+Math.random()*0.08);
+    p.setAttribute('position', `${Math.cos(angle)*r} ${Math.sin(angle)*r} 0.2`);
+    p.setAttribute('color', Math.random()>0.5?'#7df9ff':'#ffe27a');
+    p.setAttribute('material','shader:flat');
+    p.setAttribute('animation', `property: rotation; to: 0 0 360; loop:true; dur: ${4000+Math.random()*4000}; easing: linear`);
+    container.appendChild(p);
+  }
+}
+
+/* ================= AREA 9: MUSEUM ================= */
+const MUSEUM_ITEMS = [
+  {id:'keyboard', label:'INPUT DEVICE'},
+  {id:'databus', label:'BUS SYSTEM'},
+  {id:'ram', label:'RAM'},
+  {id:'l1cache', label:'CACHE'},
+  {id:'cpu', label:'CPU'},
+  {id:'register', label:'REGISTER'},
+  {id:'alu', label:'ALU'},
+  {id:'ssd', label:'STORAGE'},
+  {id:'gpu', label:'GPU'},
+  {id:'output', label:'OUTPUT'}
+];
+function buildMuseum(){
+  const container = document.getElementById('museumPedestals');
+  const n = MUSEUM_ITEMS.length;
+  MUSEUM_ITEMS.forEach((item, i)=>{
+    const angle = (i/n)*Math.PI*2;
+    const radius = 15;
+    const x = Math.cos(angle)*radius;
+    const z = -10 + Math.sin(angle)*radius;
+
+    const pedestal = document.createElement('a-cylinder');
+    pedestal.setAttribute('radius','1.3');
+    pedestal.setAttribute('height','2');
+    pedestal.setAttribute('position', `${x} 1 ${z}`);
+    pedestal.setAttribute('color','#0a1230');
+    pedestal.setAttribute('material','emissive:#2ad9ff; emissiveIntensity:0.4');
+    container.appendChild(pedestal);
+
+    const orb = document.createElement('a-sphere');
+    orb.classList.add('clickable');
+    orb.setAttribute('data-id', item.id);
+    orb.setAttribute('radius','0.7');
+    orb.setAttribute('position', `${x} 3 ${z}`);
+    orb.setAttribute('color','#ffe27a');
+    orb.setAttribute('material','emissive:#ffe27a; emissiveIntensity:0.7');
+    orb.setAttribute('animation__spin', 'property: rotation; to: 0 360 0; loop:true; dur:6000; easing:linear');
+    orb.setAttribute('animation__bob', `property: position; to: ${x} 3.5 ${z}; dir:alternate; loop:true; dur:1600; easing:easeInOutSine`);
+    orb.addEventListener('click', ()=> openPanel(item.id));
+    container.appendChild(orb);
+
+    const label = document.createElement('a-text');
+    label.setAttribute('value', item.label);
+    label.setAttribute('position', `${x} 4.4 ${z}`);
+    label.setAttribute('align','center');
+    label.setAttribute('color','#8ff9ff');
+    label.setAttribute('width','7');
+    container.appendChild(label);
+  });
+}
+
+/* ================= HUD ZONES & MINIMAP ================= */
+const ZONES = [
+  {name:'START PLAZA', start: 5, end: -18, desc:'Selamat datang di museum interaktif perjalanan data.'},
+  {name:'AREA 1 — INPUT DEVICE ZONE', start:-18, end:-58, desc:'Data berasal dari perangkat input seperti keyboard, mouse, scanner, dan sensor. Setiap tombol memiliki kode unik yang diubah menjadi biner.'},
+  {name:'AREA 2 — SYSTEM BUS HIGHWAY', start:-58, end:-98, desc:'Bus adalah jalur komunikasi yang menghubungkan komponen komputer. Data Bus membawa data aktual, Address Bus membawa alamat tujuan, dan Control Bus mengatur sinyal read, write, clock, dan interrupt.'},
+  {name:'AREA 3 — RAM CITY', start:-98, end:-178, desc:'RAM menyimpan data sementara yang sedang digunakan dan bersifat volatile — begitu daya listrik dimatikan, seluruh data yang tersimpan langsung hilang.'},
+  {name:'AREA 4 — CACHE FORTRESS', start:-178, end:-218, desc:'Cache adalah memori ultra cepat dekat CPU, lebih cepat daripada RAM. Cache hit berarti data ditemukan langsung; cache miss berarti CPU harus mengambil data dari RAM yang jauh lebih lambat.'},
+  {name:'AREA 5 — CPU CORE', start:-218, end:-308, desc:'CPU adalah otak komputer yang mengeksekusi instruksi melalui siklus FETCH → DECODE → EXECUTE, dibantu oleh Control Unit, Register, dan ALU.'},
+  {name:'AREA 6 — STORAGE VAULT', start:-308, end:-348, desc:'SSD dan HDD adalah penyimpanan sekunder yang bersifat non-volatile — data tetap tersimpan meskipun daya listrik dimatikan.'},
+  {name:'AREA 7 — GPU CHAMBER', start:-348, end:-388, desc:'GPU memiliki ribuan core kecil yang bekerja secara paralel, sangat unggul untuk tugas yang bisa dipecah menjadi banyak operasi identik sekaligus.'},
+  {name:'AREA 8 — MONITOR PORTAL', start:-388, end:-428, desc:'Monitor menampilkan hasil akhir pemrosesan data kepada pengguna dalam bentuk visual, mengubah sinyal digital menjadi gambar di layar.'},
+  {name:'AREA 9 — KNOWLEDGE HUB', start:-428, end:-480, desc:'Pusat evaluasi akhir. Selesaikan ujian pengetahuan untuk menguji seluruh pemahaman perjalanan data dan meraih sertifikat.'}
+];
+const TOTAL_LEN = 485;
+
+function buildMinimapList(){
+  const list = document.getElementById('mapList');
+  ZONES.forEach((z,i)=>{
+    const div = document.createElement('div');
+    div.className = 'mapZone';
+    div.id = 'mz'+i;
+    div.textContent = z.name.replace(/^AREA \d+ — /,'').slice(0,16);
+    list.appendChild(div);
+  });
+}
+buildMinimapList();
+
+const PASSPORT_LABELS = ['Input','Bus','RAM','Cache','CPU','Storage','GPU','Monitor'];
+function buildPassportStamps(){
+  const row = document.getElementById('stampRow');
+  PASSPORT_LABELS.forEach((label,i)=>{
+    const s = document.createElement('div');
+    s.className='stamp'; s.id='stamp'+i; s.textContent=(i+1);
+    s.title=label;
+    row.appendChild(s);
+  });
+}
+function stampPassport(zoneIdx){
+  // ZONES index 1..8 map to passport stamps 0..7 (START PLAZA and KNOWLEDGE HUB excluded)
+  const passportIdx = zoneIdx-1;
+  if(passportIdx<0 || passportIdx>=PASSPORT_LABELS.length) return;
+  const el=document.getElementById('stamp'+passportIdx);
+  if(el) el.classList.add('got');
+}
+
+/* One reusable luminous token shows the complete educational data route. */
+const JOURNEY=[
+  {n:'KEYBOARD',p:[0,3,-30]},
+  {n:'DATA BUS',p:[-10,2,-70]},
+  {n:'RAM',p:[0,5,-112]},
+  {n:'CACHE',p:[0,9,-195]},
+  {n:'CPU',p:[0,8,-250]},
+  {n:'SSD',p:[14,4,-325]},
+  {n:'GPU',p:[0,4,-365]},
+  {n:'MONITOR',p:[0,8,-395]}
+];
+let journeyPacket, journeyIndex=0, packetTrail, trailHistory=[];
+function buildDataJourney(){
+  const scene=document.querySelector('a-scene'); journeyPacket=document.createElement('a-sphere'); journeyPacket.setAttribute('radius','.65'); journeyPacket.setAttribute('color','#fff'); journeyPacket.setAttribute('material','emissive:#7df9ff; emissiveIntensity:1.3; shader:standard'); journeyPacket.setAttribute('position',JOURNEY[0].p.join(' ')); scene.appendChild(journeyPacket);
+  packetTrail=new THREE.InstancedMesh(new THREE.SphereGeometry(.12,6,5),new THREE.MeshBasicMaterial({color:'#2ad9ff',transparent:true,opacity:.65}),18); scene.object3D.add(packetTrail);
+  setInterval(()=>{ journeyIndex=(journeyIndex+1)%JOURNEY.length; const step=JOURNEY[journeyIndex]; journeyPacket.setAttribute('animation','property:position; to:'+step.p.join(' ')+'; dur:1500; easing:easeInOutQuad'); },3000);
+}
+function updatePacketTrail(){
+  if(!journeyPacket||!packetTrail)return; const p=journeyPacket.object3D.position; trailHistory.unshift(p.clone()); if(trailHistory.length>18)trailHistory.pop(); const m=new THREE.Matrix4(); for(let i=0;i<18;i++){const pt=trailHistory[i]||p; m.makeTranslation(pt.x,pt.y,pt.z);m.scale(new THREE.Vector3(1-i/24,1-i/24,1-i/24));packetTrail.setMatrixAt(i,m);} packetTrail.instanceMatrix.needsUpdate=true;
+}
+function launchPacket(points,color){
+  const p=document.createElement('a-sphere'); p.setAttribute('radius','.42'); p.setAttribute('color',color); p.setAttribute('material','emissive:'+color+'; emissiveIntensity:1'); document.querySelector('a-scene').appendChild(p);
+  let i=0; p.setAttribute('position',points[0].join(' ')); const go=()=>{ if(++i>=points.length){ setTimeout(()=>p.remove(),350); return; } p.setAttribute('animation','property:position; to:'+points[i].join(' ')+'; dur:900; easing:easeInOutQuad'); setTimeout(go,920); }; go();
+}
+function buildCpuSpectacle(){
+  const cpu=document.querySelector('[data-id="cpu"]');
+  const beam=document.createElement('a-cylinder'); beam.setAttribute('radius','.45'); beam.setAttribute('height','82'); beam.setAttribute('position','0 38 0'); beam.setAttribute('color','#2ad9ff'); beam.setAttribute('material','emissive:#2ad9ff; emissiveIntensity:.8; opacity:.16; transparent:true'); beam.setAttribute('animation','property:material.opacity; to:.42; dir:alternate; loop:true; dur:650'); cpu.appendChild(beam);
+  for(let i=0;i<3;i++){ const orbit=document.createElement('a-torus'); orbit.setAttribute('radius',8+i*1.5); orbit.setAttribute('radius-tubular','.035'); orbit.setAttribute('rotation',(i*47)+' '+(i*61)+' 0'); orbit.setAttribute('color',i===1?'#ffe27a':'#c07dff'); orbit.setAttribute('material','emissive:'+ (i===1?'#ffe27a':'#c07dff') +'; emissiveIntensity:1'); orbit.setAttribute('animation','property:rotation; to:'+(i*47+360)+' '+(i*61+360)+' 360; loop:true; dur:'+(6000+i*1800)+'; easing:linear'); cpu.appendChild(orbit); }
+  for(let i=0;i<22;i++){ const spark=document.createElement('a-sphere'); const a=Math.random()*6.28,r=4+Math.random()*7; spark.setAttribute('radius','.05'); spark.setAttribute('color','#bafcff'); spark.setAttribute('position',`${Math.cos(a)*r} ${-3+Math.random()*12} ${Math.sin(a)*r}`); spark.setAttribute('material','shader:flat'); spark.setAttribute('animation','property:scale; to:3 3 3; dir:alternate; loop:true; dur:'+(300+Math.random()*900)); cpu.appendChild(spark); }
+  for(let i=0;i<7;i++){ const arc=document.createElement('a-entity'); const points=[]; for(let j=0;j<6;j++)points.push(`${-8+j*3} ${-3+Math.random()*8} ${-4+i}`); arc.setAttribute('line','start:'+points[0]+'; end:'+points[points.length-1]+'; color:#d7ffff; opacity:.8'); arc.setAttribute('animation','property:visible; to:false; dir:alternate; loop:true; dur:'+(150+i*90)); cpu.appendChild(arc); }
+}
+function runPortalCutscene(){
+  const cut=document.getElementById('cutscene'), out=document.getElementById('cutsceneText'); const steps=['INPUT','↓','BUS','↓','RAM','↓','CACHE','↓','CPU','↓','STORAGE','↓','GPU','↓','MONITOR','PERJALANAN DATA SELESAI']; let i=0; cut.classList.add('show'); playSound('portal'); const timer=setInterval(()=>{ out.innerHTML=steps.slice(0,++i).join('<br>'); if(i>=steps.length){ clearInterval(timer); setTimeout(()=>{cut.classList.remove('show'); showJourneyComplete();},1800); }},260);
+}
+function showJourneyComplete(){
+  const finale=document.getElementById('finalePortal');
+  document.getElementById('finaleTitle').textContent = 'JOURNEY COMPLETE';
+  document.getElementById('finaleSubtitle').innerHTML = 'Anda Telah Mengikuti Perjalanan Data<br>Dari Input Hingga Monitor.<br>Lanjutkan ke Knowledge Hub (Area 9) untuk mengikuti ujian akhir dan meraih sertifikat.';
+  document.getElementById('finaleScore').textContent = 'AREA DIJELAJAHI: '+discoveredAreas.size+'/9';
+  finale.classList.add('show');
+  setInteractionMode(true);
+}
+document.addEventListener('DOMContentLoaded', ()=>{
+  document.getElementById('finaleClose').addEventListener('click', ()=>{
+    document.getElementById('finalePortal').classList.remove('show');
+    setInteractionMode(false);
+  });
+});
+
+const QUESTIONS=[
+  ['Komponen memori yang bersifat volatile (hilang saat listrik mati) adalah…',['SSD','RAM','HDD','Monitor'],1],
+  ['Cache digunakan terutama untuk…',['Menyimpan data secara permanen','Mempercepat akses CPU ke data yang sering dipakai','Menampilkan gambar ke layar','Menerima input suara'],1],
+  ['Urutan siklus kerja CPU yang benar adalah…',['EXECUTE → DECODE → FETCH','FETCH → DECODE → EXECUTE','DECODE → EXECUTE → FETCH','FETCH → EXECUTE → DECODE'],1],
+  ['Data Bus bertugas membawa…',['Data aktual antar komponen','Hanya alamat memori','Sinyal clock saja','Piksel gambar'],0],
+  ['Address Bus bersifat…',['Bidirectional (dua arah)','Unidirectional (satu arah dari CPU)','Tidak memiliki arah','Hanya aktif saat CPU mati'],1],
+  ['Bus yang membawa sinyal READ, WRITE, CLOCK, dan INTERRUPT adalah…',['Data Bus','Address Bus','Control Bus','Storage Bus'],2],
+  ['GPU sangat unggul untuk tugas yang…',['Bersifat sekuensial satu per satu','Dapat diproses secara paralel dalam jumlah besar','Hanya menyimpan file','Hanya menerima input'],1],
+  ['Media penyimpanan yang bersifat non-volatile (data tetap ada walau listrik mati) adalah…',['RAM','Register','SSD','Cache L1'],2],
+  ['ALU (Arithmetic Logic Unit) bertugas melakukan…',['Operasi aritmatika dan logika','Menyimpan data permanen','Menampilkan grafis','Merekam suara'],0],
+  ['Mengapa CPU membutuhkan cache meskipun sudah ada RAM?',['Karena RAM tidak bisa menyimpan data','Karena akses ke cache jauh lebih cepat daripada RAM','Karena RAM tidak memiliki alamat','Karena cache lebih murah dari RAM'],1],
+  ['Format alamat memori yang benar dalam sistem heksadesimal adalah…',['0x1000','RAM-Blue','GPU:ON','Hz/60'],0],
+  ['Komponen yang menampilkan hasil akhir pemrosesan data secara visual adalah…',['Keyboard','Monitor','Cache','Control Bus'],1],
+  ['Cache hit terjadi ketika…',['Data yang dicari langsung ditemukan di cache','Data harus diambil dari RAM','CPU mati mendadak','Data hilang karena volatile'],0],
+  ['Control Unit dalam CPU bertugas untuk…',['Menyimpan data permanen','Mengoordinasikan siklus fetch-decode-execute','Menampilkan grafis 3D','Menghubungkan ke internet'],1],
+  ['Dibandingkan HDD, keunggulan utama SSD adalah…',['Kapasitas selalu lebih besar','Kecepatan baca/tulis jauh lebih tinggi','Selalu lebih murah','Menggunakan piringan magnetik'],1]
+];
+function initQuiz(){ const hub=document.getElementById('area9'); const trigger=document.createElement('a-box'); trigger.classList.add('clickable'); trigger.setAttribute('position','0 3 -10'); trigger.setAttribute('width','6'); trigger.setAttribute('height','2'); trigger.setAttribute('depth','1'); trigger.setAttribute('color','#7d3fff'); trigger.setAttribute('material','emissive:#c07dff; emissiveIntensity:.8'); hub.appendChild(trigger); const t=document.createElement('a-text'); t.setAttribute('value','MULAI UJIAN AKHIR — '+QUESTIONS.length+' SOAL'); t.setAttribute('position','0 4.5 -10'); t.setAttribute('align','center'); t.setAttribute('width','9'); t.setAttribute('color','#fff'); hub.appendChild(t); trigger.addEventListener('click',startQuiz); }
+function startQuiz(){ let q=0,score=0; const modal=document.getElementById('quiz'),card=document.getElementById('quizCard'); modal.classList.add('show'); setInteractionMode(true); const render=()=>{ const item=QUESTIONS[q]; card.innerHTML='<h2>KNOWLEDGE HUB · '+(q+1)+'/'+QUESTIONS.length+'</h2><p>'+item[0]+'</p>'; item[1].forEach((answer,i)=>{const b=document.createElement('button');b.className='quizChoice';b.textContent=String.fromCharCode(65+i)+'. '+answer;b.onclick=()=>{if(i===item[2])score+=Math.round(100/QUESTIONS.length);playSound('click');q++;q<QUESTIONS.length?render():finish();};card.appendChild(b);});}; const finish=()=>{ score=Math.min(score,100); const master=score>=80; const completion=Math.round((discoveredAreas.size/9)*100); if(master) playSound('portal'); card.innerHTML='<h2>'+ (master?'MASTER OF COMPUTER ARCHITECTURE':'HASIL UJIAN') +'</h2>'+ (master? '<div style="border:1px solid #ffe27a;padding:16px;margin:10px 0;background:rgba(255,226,122,.06);"><div style="color:#ffe27a;font-family:Orbitron,sans-serif;letter-spacing:2px;font-size:12px;">SERTIFIKAT DIGITAL</div><div style="color:#fff;font-family:Orbitron,sans-serif;font-size:20px;margin:8px 0;">DATA ODYSSEY VR</div><div style="color:#8ff9ff;">Score: '+score+'/100 &nbsp;|&nbsp; Completion: '+completion+'%</div></div>' : '<p style="font-size:22px;color:#ffe27a">NILAI AKHIR: '+score+'/100</p>') +'<p>'+ (master?'Anda telah memahami perjalanan data modern dari input hingga output.':'Ulangi ujian untuk meraih sertifikat MASTER (skor minimal 80).') +'</p><button class="quizChoice" id="closeQuiz">KEMBALI KE MUSEUM</button>';document.getElementById('closeQuiz').onclick=()=>{modal.classList.remove('show');setInteractionMode(false);}; }; render(); }
+
+let lastZoneIdx = -1;
+function updateHUD(){
+  const rig = document.getElementById('rig');
+  if(!rig || !rig.object3D) return;
+  const z = rig.object3D.position.z;
+
+  let idx = ZONES.findIndex(zn => z <= zn.start && z > zn.end);
+  if(idx === -1) idx = z > ZONES[0].start ? 0 : ZONES.length-1;
+
+  if(idx !== lastZoneIdx){
+    document.getElementById('location').textContent = 'ZONA: ' + ZONES[idx].name;
+    document.querySelectorAll('.mapZone').forEach(el=>el.classList.remove('active'));
+    const active = document.getElementById('mz'+idx);
+    if(active) active.classList.add('active');
+    lastZoneIdx = idx;
+    showCheckpoint(ZONES[idx]);
+  }
+
+  const traveled = Math.min(Math.max(-z, 0), TOTAL_LEN);
+  const pct = (traveled / TOTAL_LEN) * 100;
+  document.getElementById('progressFill').style.width = pct.toFixed(1) + '%';
+}
+
+/* ================= MAIN TICK LOOP ================= */
+let frame = 0;
+function startTickLoop(){
+  let last=0;
+  function tick(now){
+    if(now-last>33){ last=now;
+    frame++;
+    updateHUD();
+    updatePacketTrail();
+
+    // binary rain fall
+    rainDrops.forEach(d=>{
+      d.y -= d.speed;
+      if(d.y < 0.5){ d.y = 14 + Math.random()*6; d.el.setAttribute('value', Math.random()>0.5?'1':'0'); }
+      d.el.setAttribute('position', `${d.x} ${d.y} ${d.z}`);
+    });
+
+    // keyboard binary toggle every ~1.5s
+    if(frame % 45 === 0) toggleKeyBinary();
+
+    // data bus capsules + binary stream move along highway
+    capsules.forEach(c=>{
+      c.z += c.speed;
+      if(c.z > 12) c.z = -12;
+      c.el.setAttribute('position', `-10 1.4 ${c.z}`);
+    });
+    busBinaryBits.forEach(b=>{
+      b.z += b.speed;
+      if(b.z > 12){ b.z = -12; b.el.setAttribute('value', Math.random()>0.5?'1':'0'); }
+      b.el.setAttribute('position', `-10 0.2 ${b.z}`);
+    });
+    controlPulses.forEach(p=>{
+      p.z += p.speed;
+      if(p.z > 11) p.z = -11;
+      p.el.setAttribute('position', `0 2.1 ${p.z}`);
+    });
+
+    // ssd light flow
+    ssdFlows.forEach(f=>{
+      f.x += f.speed;
+      if(f.x > 2.8) f.x = -2.8;
+      f.el.setAttribute('position', `${f.x} 0.32 ${f.z}`);
+    });
+    }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+/* ================= CHECKPOINT SYSTEM (info-only, auto-dismiss) ================= */
+const discoveredAreas=new Set();
+function updateLearningProgress(){ document.getElementById('progressLabel').textContent=`LEARNING PROGRESS · ${discoveredAreas.size}/9 AREA`; }
+function showCheckpoint(zone){
+  const overlay=document.getElementById('checkpoint');
+  document.getElementById('checkpointArea').textContent=zone.name.match(/AREA \d+/)?.[0] || 'CHECKPOINT';
+  document.getElementById('checkpointName').textContent=zone.name.replace(/^AREA \d+ — /,'');
+  document.getElementById('checkpointDesc').textContent=zone.desc;
+  overlay.classList.remove('show'); void overlay.offsetWidth; overlay.classList.add('show');
+  const idx=ZONES.indexOf(zone);
+  if(idx>0){ discoveredAreas.add(idx); stampPassport(idx); updateLearningProgress(); playSound('checkpoint'); }
+  clearTimeout(showCheckpoint.timer);
+  showCheckpoint.timer=setTimeout(()=>{overlay.classList.remove('show');},5000);
+}
+document.addEventListener('DOMContentLoaded', ()=>{
+  const closeBtn=document.getElementById('checkpointClose');
+  if(closeBtn) closeBtn.addEventListener('click', ()=>{
+    document.getElementById('checkpoint').classList.remove('show');
+    clearTimeout(showCheckpoint.timer);
+  });
+});
+
+/* ================= IMMERSION AUDIO (synthesized, no external assets) ================= */
+let audioCtx=null, ambienceNodes=null, soundsEnabled=true;
+function initAudio(){
+  try{ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ soundsEnabled=false; }
+}
+function startAmbience(){
+  if(!soundsEnabled||!audioCtx) return;
+  if(audioCtx.state==='suspended') audioCtx.resume();
+  if(ambienceNodes) return;
+  const osc1=audioCtx.createOscillator(), osc2=audioCtx.createOscillator(), gain=audioCtx.createGain();
+  osc1.type='sine'; osc1.frequency.value=55;
+  osc2.type='sine'; osc2.frequency.value=82.5;
+  gain.gain.value=0.025;
+  osc1.connect(gain); osc2.connect(gain); gain.connect(audioCtx.destination);
+  osc1.start(); osc2.start();
+  ambienceNodes={osc1,osc2,gain};
+}
+function playSound(kind){
+  if(!soundsEnabled||!audioCtx) return;
+  if(audioCtx.state==='suspended') audioCtx.resume();
+  const now=audioCtx.currentTime;
+  const osc=audioCtx.createOscillator(), gain=audioCtx.createGain();
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  let freq=440, dur=0.12, type='sine', vol=0.06;
+  if(kind==='hover'){ freq=880; dur=0.05; vol=0.02; }
+  else if(kind==='click'){ freq=660; dur=0.09; type='triangle'; vol=0.05; }
+  else if(kind==='checkpoint'){ freq=520; dur=0.35; type='sine'; vol=0.05; }
+  else if(kind==='portal'){ freq=220; dur=0.6; type='sawtooth'; vol=0.04; }
+  else if(kind==='alert'){ freq=140; dur=0.4; type='square'; vol=0.05; }
+  osc.type=type; osc.frequency.setValueAtTime(freq, now);
+  osc.frequency.exponentialRampToValueAtTime(Math.max(40,freq*(kind==='alert'?0.7:1.6)), now+dur);
+  gain.gain.setValueAtTime(vol, now);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now+dur);
+  osc.start(now); osc.stop(now+dur+0.02);
+}
+
+})();
+</script>
+
+</body>
+</html>
