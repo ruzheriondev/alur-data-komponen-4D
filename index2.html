@@ -1,0 +1,5362 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#eef1f4">
+<title>CPU Anatomy Lab 3D — Pro Max</title>
+<style>
+:root{
+  --bg:#edf1f4;
+  --surface:#ffffff;
+  --surface-soft:#f7f9fb;
+  --surface-blue:#eef4fb;
+  --line:#d6dde4;
+  --line-strong:#bdc7d1;
+  --text:#18232d;
+  --muted:#697782;
+  --muted-2:#87929c;
+  --accent:#3c6ea8;
+  --accent-dark:#2c588b;
+  --accent-soft:#eaf2fb;
+  --green:#2f795f;
+  --green-soft:#eaf4ef;
+  --amber:#9d7732;
+  --amber-soft:#fbf4e6;
+  --red:#a55050;
+  --shadow:0 12px 34px rgba(27,39,50,.08);
+  --shadow-soft:0 5px 18px rgba(27,39,50,.055);
+}
+*{
+  box-sizing:border-box;
+}
+html,
+body{
+  width:100%;
+  height:100%;
+  margin:0;
+  overflow:hidden;
+  background:var(--bg);
+  color:var(--text);
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+}
+body{
+  user-select:none;
+}
+button{
+  font:inherit;
+}
+#app{
+  position:fixed;
+  inset:0;
+  overflow:hidden;
+}
+#scene{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  display:block;
+  touch-action:none;
+  cursor:grab;
+}
+#scene.dragging{
+  cursor:grabbing;
+}
+.topbar{
+  position:absolute;
+  z-index:30;
+  top:14px;
+  left:16px;
+  right:16px;
+  height:60px;
+  padding:0 16px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  border:1px solid var(--line);
+  border-radius:7px;
+  background:rgba(255,255,255,.965);
+  box-shadow:var(--shadow);
+  pointer-events:none;
+}
+.brand{
+  display:flex;
+  align-items:center;
+  gap:11px;
+}
+.brand-icon{
+  width:34px;
+  height:34px;
+  border:1px solid var(--line-strong);
+  border-radius:9px;
+  background:#fafbfd;
+  display:grid;
+  place-items:center;
+  position:relative;
+}
+.brand-icon::before{
+  content:"";
+  width:13px;
+  height:13px;
+  border:2px solid #63717d;
+  border-radius:3px;
+}
+.brand-icon::after{
+  content:"";
+  width:4px;
+  height:4px;
+  position:absolute;
+  background:#63717d;
+  border-radius:1px;
+}
+.brand-title{
+  font-size:15px;
+  line-height:1.05;
+  font-weight:800;
+  letter-spacing:-.015em;
+}
+.brand-sub{
+  margin-top:4px;
+  font-size:11px;
+  line-height:1;
+  color:var(--muted);
+}
+.header-status{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  color:#596774;
+  font-size:12px;
+}
+.status-dot{
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:#4f9c78;
+}
+.side{
+  position:absolute;
+  z-index:30;
+  top:88px;
+  bottom:16px;
+  width:292px;
+  overflow:auto;
+  border:1px solid var(--line);
+  border-radius:7px;
+  background:rgba(255,255,255,.965);
+  box-shadow:var(--shadow);
+}
+.side.left{
+  left:16px;
+}
+.side.right{
+  right:16px;
+}
+.section{
+  padding:14px;
+  border-bottom:1px solid #e7ebef;
+}
+.section:last-child{
+  border-bottom:none;
+}
+.kicker{
+  margin-bottom:10px;
+  color:#6c7985;
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+}
+.action{
+  display:block;
+  width:100%;
+  margin:0 0 8px;
+  padding:10px 11px;
+  border:1px solid #c7d0d9;
+  border-radius:5px;
+  background:#fff;
+  color:#24323e;
+  text-align:left;
+  cursor:pointer;
+  transition:
+    background .15s ease,
+    border-color .15s ease,
+    transform .08s ease,
+    box-shadow .15s ease;
+}
+.action:hover{
+  background:#f8fafb;
+  border-color:#b7c3ce;
+}
+.action:active{
+  transform:translateY(1px);
+}
+.action.primary{
+  color:#fff;
+  background:var(--accent);
+  border-color:var(--accent);
+}
+.action.primary:hover{
+  background:var(--accent-dark);
+}
+.action.selected{
+  box-shadow:inset 0 0 0 2px rgba(255,255,255,.38);
+}
+.action[disabled],
+.small-action[disabled]{
+  opacity:.48;
+  cursor:not-allowed;
+}
+.grid2{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.small-action{
+  width:100%;
+  padding:9px 8px;
+  border:1px solid #c9d2db;
+  border-radius:5px;
+  background:#fff;
+  color:#30404d;
+  font-size:11px;
+  cursor:pointer;
+  transition:background .15s ease,border-color .15s ease,transform .08s ease;
+}
+.small-action:hover{
+  background:#f8fafb;
+  border-color:#b7c3ce;
+}
+.small-action:active{
+  transform:translateY(1px);
+}
+.select-card{
+  min-height:90px;
+  border:1px solid #d8dfe6;
+  border-radius:10px;
+  background:#fbfcfd;
+  padding:10px;
+}
+.select-title{
+  font-size:14px;
+  font-weight:800;
+  margin-bottom:5px;
+}
+.select-body{
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.5;
+}
+.metric-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.metric{
+  min-height:65px;
+  border:1px solid #d8dfe6;
+  border-radius:9px;
+  background:#fbfcfd;
+  padding:10px;
+}
+.metric strong{
+  display:block;
+  font-size:15px;
+  line-height:1;
+}
+.metric span{
+  display:block;
+  margin-top:5px;
+  color:#78858f;
+  font-size:10px;
+  text-transform:uppercase;
+}
+.model-state{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:8px 0;
+  border-top:1px dashed #e1e6ea;
+  color:var(--muted);
+  font-size:11px;
+}
+.model-state b{
+  color:var(--text);
+}
+.step-card{
+  border:1px solid #d7dee6;
+  border-radius:10px;
+  background:#fbfcfd;
+  padding:11px;
+}
+.step-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:9px;
+}
+.step-name{
+  font-size:15px;
+  font-weight:850;
+  letter-spacing:-.01em;
+}
+.step-count{
+  padding:4px 7px;
+  border:1px solid #d6dde4;
+  border-radius:999px;
+  background:#fff;
+  color:#5e6b77;
+  font-size:10px;
+  white-space:nowrap;
+}
+.step-desc{
+  margin-top:7px;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.48;
+}
+.progress{
+  height:7px;
+  margin:11px 0 8px;
+  overflow:hidden;
+  border-radius:999px;
+  background:#e5eaee;
+}
+.progress-fill{
+  width:0%;
+  height:100%;
+  background:var(--accent);
+  transition:width .2s ease;
+}
+.route{
+  padding-top:8px;
+  border-top:1px solid #e2e7eb;
+  color:#6a7782;
+  font-size:10px;
+  line-height:1.45;
+}
+.code-card{
+  overflow:hidden;
+  border:1px solid #d8dfe6;
+  border-radius:10px;
+  background:#fbfcfd;
+}
+.code-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:9px 10px;
+  border-bottom:1px dashed #e0e5e9;
+  font-size:12px;
+}
+.code-row:last-child{
+  border-bottom:none;
+}
+.code-key{
+  color:#7a8792;
+  font-size:10px;
+  text-transform:uppercase;
+}
+.code-value{
+  color:#1d2933;
+  font-weight:850;
+}
+.register-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.reg{
+  border:1px solid #d8dfe6;
+  border-radius:9px;
+  background:#fbfcfd;
+  padding:9px;
+}
+.reg label{
+  display:block;
+  color:#7b8791;
+  font-size:10px;
+  text-transform:uppercase;
+}
+.reg b{
+  display:block;
+  margin-top:4px;
+  font-size:13px;
+}
+.badge{
+  display:inline-flex;
+  align-items:center;
+  padding:4px 7px;
+  border:1px solid #d6dde4;
+  border-radius:999px;
+  background:#fff;
+  color:#5c6a76;
+  font-size:10px;
+}
+.badge.green{
+  border-color:#cfe2d8;
+  background:var(--green-soft);
+  color:#316c58;
+}
+.badge.blue{
+  border-color:#cdddeb;
+  background:var(--accent-soft);
+  color:#35648f;
+}
+.legend{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+.legend-item{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  color:#687681;
+  font-size:10px;
+}
+.legend-swatch{
+  width:10px;
+  height:10px;
+  border:1px solid rgba(0,0,0,.08);
+  border-radius:2px;
+}
+#help{
+  position:absolute;
+  z-index:18;
+  left:50%;
+  bottom:22px;
+  transform:translateX(-50%);
+  padding:8px 12px;
+  border:1px solid var(--line);
+  border-radius:9px;
+  background:rgba(255,255,255,.93);
+  box-shadow:var(--shadow-soft);
+  color:#5d6a76;
+  font-size:11px;
+  pointer-events:none;
+}
+#toast{
+  position:absolute;
+  z-index:50;
+  top:84px;
+  left:50%;
+  padding:10px 14px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:#fff;
+  box-shadow:var(--shadow);
+  color:#33424e;
+  font-size:12px;
+  opacity:0;
+  transform:translate(-50%,-10px);
+  pointer-events:none;
+  transition:opacity .2s ease,transform .2s ease;
+}
+#toast.show{
+  opacity:1;
+  transform:translate(-50%,0);
+}
+#loading{
+  position:absolute;
+  z-index:100;
+  inset:0;
+  display:grid;
+  place-items:center;
+  background:#eef1f4;
+}
+.loading-card{
+  width:min(410px,84vw);
+  padding:22px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:#fff;
+  box-shadow:0 18px 50px rgba(28,39,50,.09);
+}
+.loading-title{
+  color:#1d2b35;
+  font-size:14px;
+  font-weight:850;
+}
+.loading-sub{
+  margin-top:5px;
+  color:var(--muted);
+  font-size:11px;
+  line-height:1.45;
+}
+.loading-track{
+  height:8px;
+  margin-top:15px;
+  overflow:hidden;
+  border-radius:999px;
+  background:#e5eaee;
+}
+.loading-bar{
+  width:0%;
+  height:100%;
+  background:var(--accent);
+  transition:width .12s ease;
+}
+.loading-foot{
+  margin-top:8px;
+  color:#7a8791;
+  font-size:10px;
+}
+@media(max-width:1100px){
+  .side{
+    width:252px;
+  }
+  .topbar{
+    left:10px;
+    right:10px;
+  }
+  .side.left{
+    left:10px;
+  }
+  .side.right{
+    right:10px;
+  }
+}
+@media(max-width:860px){
+  .side{
+    width:auto;
+    max-height:36vh;
+  }
+  .side.left{
+    left:10px;
+    right:48%;
+    bottom:10px;
+    top:auto;
+  }
+  .side.right{
+    left:54%;
+    right:10px;
+    top:84px;
+    bottom:auto;
+    max-height:43vh;
+  }
+  #help{
+    bottom:calc(36vh + 16px);
+  }
+}
+@media(max-width:560px){
+  .topbar{
+    height:52px;
+  }
+  .brand-sub{
+    display:none;
+  }
+  .brand-title{
+    font-size:13px;
+  }
+  .side.left{
+    right:43%;
+    max-height:40vh;
+  }
+  .side.right{
+    left:59%;
+    max-height:45vh;
+  }
+  .section{
+    padding:11px;
+  }
+  .action{
+    padding:8px 9px;
+    font-size:11px;
+  }
+  .small-action{
+    padding:8px 5px;
+    font-size:9px;
+  }
+  .select-body,
+  .step-desc{
+    font-size:11px;
+  }
+  #help{
+    display:none;
+  }
+}
+
+.header-tools{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  pointer-events:auto;
+}
+.sound-btn{
+  border:1px solid #b9c4ce;
+  background:#f7f9fb;
+  color:#3e4d59;
+  padding:7px 9px;
+  border-radius:5px;
+  cursor:pointer;
+  font-family:"Courier New",monospace;
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:.02em;
+  box-shadow:2px 2px 0 rgba(53,66,77,.12);
+}
+.sound-btn:hover{
+  background:#fff;
+}
+.sound-btn.on{
+  background:#eaf4ef;
+  border-color:#bfd7ca;
+  color:#2f6b57;
+}
+@media(max-width:560px){
+  .header-tools{gap:5px}
+  .sound-btn{font-size:8px;padding:6px 7px}
+}
+
+/* PIXEL UI LAYER */
+.side,
+.topbar,
+.step-card,
+.code-card,
+.select-card,
+.metric,
+.reg,
+.sound-btn,
+.action,
+.small-action{
+  border-radius:5px;
+}
+.side,
+.topbar{
+  box-shadow:
+    3px 3px 0 rgba(67,79,90,.10),
+    inset 1px 1px 0 rgba(255,255,255,.75);
+}
+.action,
+.small-action,
+.sound-btn{
+  font-family:"Courier New",monospace;
+}
+.kicker{
+  font-family:"Courier New",monospace;
+  letter-spacing:.12em;
+}
+.metric b,
+.reg b,
+.step-name,
+.code-value{
+  font-family:"Courier New",monospace;
+}
+
+/* ============================================================
+   ULTRA HIGH — EXTENDED EDUCATION UI
+   ============================================================ */
+.edu-card{
+  border:1px solid #d7dfe6;
+  border-radius:7px;
+  background:#fbfcfd;
+  overflow:hidden;
+}
+.edu-card + .edu-card{
+  margin-top:9px;
+}
+.edu-head{
+  padding:10px 11px;
+  border-bottom:1px solid #e4e9ed;
+  background:#f8fafb;
+}
+.edu-head-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:9px;
+}
+.edu-title{
+  font-size:13px;
+  font-weight:850;
+  color:#1f2d38;
+}
+.edu-tag{
+  font:700 9px "Courier New",monospace;
+  letter-spacing:.04em;
+  color:#5e7180;
+  padding:4px 6px;
+  border:1px solid #d7dfe6;
+  border-radius:5px;
+  background:#fff;
+}
+.edu-body{
+  padding:11px;
+}
+.edu-body p{
+  margin:0 0 9px;
+  color:#596975;
+  font-size:11px;
+  line-height:1.62;
+}
+.edu-body p:last-child{
+  margin-bottom:0;
+}
+.edu-list{
+  margin:0;
+  padding:0 0 0 16px;
+  color:#596975;
+  font-size:11px;
+  line-height:1.58;
+}
+.edu-list li{
+  margin:0 0 5px;
+}
+.edu-list li:last-child{
+  margin-bottom:0;
+}
+.edu-highlight{
+  border-left:3px solid var(--accent);
+  padding:8px 9px;
+  margin-top:9px;
+  background:var(--accent-soft);
+  color:#496273;
+  font-size:11px;
+  line-height:1.55;
+}
+.edu-flow{
+  display:grid;
+  gap:6px;
+  margin-top:9px;
+}
+.edu-flow-row{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  color:#526473;
+  font-size:10px;
+}
+.edu-flow-node{
+  min-width:70px;
+  padding:6px 7px;
+  border:1px solid #d6dee5;
+  border-radius:5px;
+  background:#fff;
+  text-align:center;
+  font:700 9px "Courier New",monospace;
+}
+.edu-flow-arrow{
+  color:#73828d;
+  font-weight:800;
+}
+.edu-tip{
+  margin-top:9px;
+  padding:8px 9px;
+  border:1px dashed #cdd8e1;
+  border-radius:5px;
+  background:#fff;
+  color:#697984;
+  font-size:10px;
+  line-height:1.5;
+}
+.edu-section-label{
+  margin:0 0 7px;
+  color:#71808c;
+  font:800 9px "Courier New",monospace;
+  letter-spacing:.11em;
+  text-transform:uppercase;
+}
+.step-detail{
+  margin-top:9px;
+  padding-top:9px;
+  border-top:1px dashed #dde4e9;
+}
+.step-detail strong{
+  color:#2f4250;
+}
+
+</style>
+</head>
+<body>
+<div id="app">
+<canvas id="scene"></canvas>
+
+<div id="loading">
+  <div class="loading-card">
+    <div class="loading-title">INITIALIZING CPU LAB...</div>
+    <div class="loading-sub">Menyiapkan anatomy processor, modul RAM DDR, material, jalur instruksi, dan sistem inspection.</div>
+    <div class="loading-track"><div id="loadingBar" class="loading-bar"></div></div>
+    <div id="loadingFoot" class="loading-foot">Membangun model...</div>
+  </div>
+</div>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-icon"></div>
+    <div>
+      <div class="brand-title">CPU Anatomy Lab 3D</div>
+      <div class="brand-sub">Pengenalan Arsitektur &amp; Organisasi Komputer</div>
+    </div>
+  </div>
+  <div class="header-tools">
+    <button id="soundBtn" class="sound-btn" type="button" aria-label="Toggle background sound">BACKSOUND: OFF</button>
+    <div class="header-status">
+      <span class="status-dot"></span>
+      <span id="headerStatus">LAB READY</span>
+    </div>
+  </div>
+</header>
+
+<aside class="side left">
+  <section class="section">
+    <div class="kicker">Kontrol Lab</div>
+    <button id="explodeBtn" class="action primary">BONGKAR CPU</button>
+    <button id="manualBtn" class="action">INSTRUKSI MANUAL</button>
+    <button id="autoBtn" class="action">INSTRUKSI OTOMATIS</button>
+
+    <div class="grid2">
+      <button id="prevBtn" class="small-action">← STEP SEBELUMNYA</button>
+      <button id="nextBtn" class="small-action">STEP BERIKUTNYA →</button>
+    </div>
+
+    <div class="grid2" style="margin-top:8px">
+      <button id="resetInstrBtn" class="small-action">RESET INSTRUKSI</button>
+      <button id="resetBtn" class="small-action">RESET</button>
+    </div>
+
+    <button id="cameraBtn" class="action" style="margin-top:8px">RESET KAMERA</button>
+  </section>
+
+  <section class="section">
+    <div class="kicker">Komponen Dipilih</div>
+    <div class="select-card">
+      <div id="selectedTitle" class="select-title">Tidak ada</div>
+      <div id="selectedBody" class="select-body">
+        Klik objek 3D untuk melakukan inspection.
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="kicker">Struktur Processor</div>
+    <div class="metric-grid">
+      <div class="metric">
+        <strong>4</strong>
+        <span>Cores</span>
+      </div>
+      <div class="metric">
+        <strong>L1–L3</strong>
+        <span>Cache</span>
+      </div>
+      <div class="metric">
+        <strong>ALU</strong>
+        <span>Execution</span>
+      </div>
+      <div class="metric">
+        <strong>CU</strong>
+        <span>Control</span>
+      </div>
+    </div>
+    <div class="model-state"><span>Model CPU</span><b id="modelState">Utuh</b></div>
+    <div class="model-state"><span>Instruction</span><b id="instructionState">Idle</b></div>
+  </section>
+
+
+  <section class="section">
+    <div class="kicker">Tujuan Pembelajaran</div>
+    <div class="edu-card">
+      <div class="edu-head">
+        <div class="edu-head-row">
+          <div class="edu-title">Dari bentuk fisik ke arsitektur</div>
+          <span class="edu-tag">CONCEPT</span>
+        </div>
+      </div>
+      <div class="edu-body">
+        <p>
+          Laboratorium ini menghubungkan dua sudut pandang yang sering dipelajari
+          terpisah: <b>organisasi perangkat keras</b> dan <b>alur eksekusi instruksi</b>.
+          Pertama, pengguna membongkar package processor secara visual. Setelah itu,
+          silicon die dibaca sebagai kumpulan resource pemrosesan seperti core, cache,
+          ALU, Control Unit, dan register.
+        </p>
+        <p>
+          Tujuannya bukan sekadar mengenali nama komponen. Pengguna diharapkan memahami
+          bahwa sebuah instruksi membutuhkan perpindahan informasi melalui beberapa
+          bagian CPU sebelum menghasilkan keadaan register yang baru.
+        </p>
+        <div class="edu-highlight">
+          <b>Inti konsep:</b> hardware menjelaskan <i>di mana</i> pekerjaan berlangsung,
+          sedangkan instruction flow menjelaskan <i>bagaimana</i> informasi bergerak.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="kicker">Cara Menggunakan Lab</div>
+    <div class="edu-card">
+      <div class="edu-body">
+        <div class="edu-section-label">Urutan yang disarankan</div>
+        <ol class="edu-list">
+          <li>Klik <b>BONGKAR CPU</b> dan amati perubahan jarak antar layer.</li>
+          <li>Klik <b>Silicon Die</b> untuk memusatkan kamera pada bagian semikonduktor.</li>
+          <li>Inspect <b>Core, Cache, ALU, Control Unit, dan Register</b> satu per satu.</li>
+          <li>Jalankan <b>INSTRUKSI MANUAL</b> agar setiap tahap bisa diamati.</li>
+          <li>Gunakan <b>INSTRUKSI OTOMATIS</b> untuk melihat seluruh alur sebagai satu rangkaian.</li>
+        </ol>
+        <div class="edu-tip">
+          <b>Tip:</b> lakukan mode manual terlebih dahulu. Saat pengguna sudah memahami
+          fungsi tiap blok, mode otomatis akan terasa seperti rangkaian sebab-akibat,
+          bukan sekadar animasi.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="kicker">Material</div>
+    <div class="legend">
+      <span class="legend-item"><i class="legend-swatch" style="background:#bbc3ca"></i>Metal</span>
+      <span class="legend-item"><i class="legend-swatch" style="background:#303946"></i>Silicon</span>
+      <span class="legend-item"><i class="legend-swatch" style="background:#bd9137"></i>Gold</span>
+      <span class="legend-item"><i class="legend-swatch" style="background:#3e73aa"></i>Logic</span>
+      <span class="legend-item"><i class="legend-swatch" style="background:#2f785f"></i>RAM</span>
+    </div>
+  </section>
+</aside>
+
+<aside class="side right">
+  <section class="section">
+    <div class="kicker">Simulasi Instruksi</div>
+    <div class="step-card">
+      <div class="step-head">
+        <div id="stepName" class="step-name">IDLE</div>
+        <div id="stepCount" class="step-count">0 / 6</div>
+      </div>
+      <div id="stepDescription" class="step-desc">
+        Jalankan contoh konseptual LOAD untuk melihat perpindahan instruksi dan data.
+      </div>
+      <div class="progress"><div id="progressFill" class="progress-fill"></div></div>
+      <div id="routeText" class="route">
+        RAM → CACHE → REGISTER → CONTROL → REGISTER → OUTPUT
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="kicker">Instruksi</div>
+    <div class="code-card">
+      <div class="code-row">
+        <span class="code-key">Instruction</span>
+        <span class="code-value">LOAD</span>
+      </div>
+      <div class="code-row">
+        <span class="code-key">Data</span>
+        <span id="dataValue" class="code-value">?</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="kicker">Register</div>
+    <div class="register-grid">
+      <div class="reg"><label>AX</label><b id="ax">?</b></div>
+      <div class="reg"><label>BX</label><b>0</b></div>
+      <div class="reg"><label>CX</label><b>0</b></div>
+      <div class="reg"><label>DX</label><b>0</b></div>
+      <div class="reg"><label>PC</label><b id="pc">0001</b></div>
+      <div class="reg"><label>IR</label><b>LOAD</b></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="kicker">Mode</div>
+    <span id="modeBadge" class="badge green">Idle</span>
+    <div class="select-body" style="margin-top:7px">
+      RESET INSTRUKSI hanya mengembalikan state simulasi. State fisik processor dipertahankan.
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="kicker">Penjelasan Materi</div>
+    <div id="lessonCard" class="edu-card">
+      <div class="edu-head">
+        <div class="edu-head-row">
+          <div id="lessonTitle" class="edu-title">Arsitektur Processor</div>
+          <span id="lessonTag" class="edu-tag">OVERVIEW</span>
+        </div>
+      </div>
+      <div class="edu-body">
+        <p id="lessonP1">
+          Processor dapat dipahami sebagai sistem yang menerima instruksi,
+          mengatur data, dan mengubah keadaan internalnya. Pada lab ini,
+          pembahasan sengaja dipusatkan pada processor dan RAM agar hubungan
+          antara memori utama dan unit pemrosesan dapat diamati tanpa distraksi
+          hardware lain.
+        </p>
+        <p id="lessonP2">
+          Ketika CPU dibongkar, layer fisik digunakan sebagai jembatan menuju
+          konsep arsitektur komputer. Silicon die menjadi titik masuk untuk
+          melihat resource pemrosesan yang bekerja di balik package.
+        </p>
+        <div id="lessonFlow" class="edu-flow">
+          <div class="edu-flow-row">
+            <span class="edu-flow-node">RAM</span>
+            <span class="edu-flow-arrow">→</span>
+            <span class="edu-flow-node">CACHE</span>
+            <span class="edu-flow-arrow">→</span>
+            <span class="edu-flow-node">REGISTER</span>
+          </div>
+          <div class="edu-flow-row">
+            <span class="edu-flow-node">DECODE</span>
+            <span class="edu-flow-arrow">→</span>
+            <span class="edu-flow-node">CONTROL</span>
+            <span class="edu-flow-arrow">→</span>
+            <span class="edu-flow-node">OUTPUT</span>
+          </div>
+        </div>
+        <div id="lessonTip" class="edu-tip">
+          <b>Perhatikan:</b> hubungan spatial antar objek adalah bagian dari materi.
+          Letak RAM di samping CPU sengaja digunakan untuk membantu pengguna
+          menghubungkan memori dengan jalur data.
+        </div>
+      </div>
+    </div>
+  </section>
+
+</aside>
+
+<div id="help">Drag = orbit · Wheel = zoom · Click = inspect · Mobile = drag + pinch</div>
+<div id="toast"></div>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   001 — APPLICATION ROOT
+   ============================================================ */
+(() => {
+
+/* ============================================================
+   002 — DOM REFERENCES
+   ============================================================ */
+const canvas = document.getElementById("scene");
+const ctx = canvas.getContext("2d", {alpha:false});
+
+const el = {
+  loading: document.getElementById("loading"),
+  loadingBar: document.getElementById("loadingBar"),
+  loadingFoot: document.getElementById("loadingFoot"),
+  headerStatus: document.getElementById("headerStatus"),
+  explodeBtn: document.getElementById("explodeBtn"),
+  manualBtn: document.getElementById("manualBtn"),
+  autoBtn: document.getElementById("autoBtn"),
+  prevBtn: document.getElementById("prevBtn"),
+  nextBtn: document.getElementById("nextBtn"),
+  resetInstrBtn: document.getElementById("resetInstrBtn"),
+  resetBtn: document.getElementById("resetBtn"),
+  cameraBtn: document.getElementById("cameraBtn"),
+  soundBtn: document.getElementById("soundBtn"),
+  selectedTitle: document.getElementById("selectedTitle"),
+  selectedBody: document.getElementById("selectedBody"),
+  modelState: document.getElementById("modelState"),
+  instructionState: document.getElementById("instructionState"),
+  stepName: document.getElementById("stepName"),
+  stepCount: document.getElementById("stepCount"),
+  stepDescription: document.getElementById("stepDescription"),
+  progressFill: document.getElementById("progressFill"),
+  routeText: document.getElementById("routeText"),
+  dataValue: document.getElementById("dataValue"),
+  ax: document.getElementById("ax"),
+  pc: document.getElementById("pc"),
+  modeBadge: document.getElementById("modeBadge"),
+  toast: document.getElementById("toast")
+};
+
+/* ============================================================
+   003 — VECTOR
+   ============================================================ */
+function V(x=0,y=0,z=0){
+  return {x,y,z};
+}
+
+/* ============================================================
+   004 — VECTOR ADD
+   ============================================================ */
+function vAdd(a,b){
+  return V(
+    a.x+b.x,
+    a.y+b.y,
+    a.z+b.z
+  );
+}
+
+/* ============================================================
+   005 — VECTOR SUBTRACT
+   ============================================================ */
+function vSub(a,b){
+  return V(
+    a.x-b.x,
+    a.y-b.y,
+    a.z-b.z
+  );
+}
+
+/* ============================================================
+   006 — VECTOR SCALE
+   ============================================================ */
+function vScale(a,s){
+  return V(
+    a.x*s,
+    a.y*s,
+    a.z*s
+  );
+}
+
+/* ============================================================
+   007 — VECTOR DOT
+   ============================================================ */
+function vDot(a,b){
+  return a.x*b.x+a.y*b.y+a.z*b.z;
+}
+
+/* ============================================================
+   008 — VECTOR CROSS
+   ============================================================ */
+function vCross(a,b){
+  return V(
+    a.y*b.z-a.z*b.y,
+    a.z*b.x-a.x*b.z,
+    a.x*b.y-a.y*b.x
+  );
+}
+
+/* ============================================================
+   009 — VECTOR LENGTH
+   ============================================================ */
+function vLen(a){
+  return Math.hypot(a.x,a.y,a.z);
+}
+
+/* ============================================================
+   010 — VECTOR NORMALIZE
+   ============================================================ */
+function vNorm(a){
+  const l=vLen(a)||1;
+  return V(a.x/l,a.y/l,a.z/l);
+}
+
+/* ============================================================
+   011 — SCALAR LERP
+   ============================================================ */
+function lerp(a,b,t){
+  return a+(b-a)*t;
+}
+
+/* ============================================================
+   012 — VECTOR LERP
+   ============================================================ */
+function vLerp(a,b,t){
+  return V(
+    lerp(a.x,b.x,t),
+    lerp(a.y,b.y,t),
+    lerp(a.z,b.z,t)
+  );
+}
+
+/* ============================================================
+   013 — CLAMP
+   ============================================================ */
+function clamp(v,a,b){
+  return Math.max(a,Math.min(b,v));
+}
+
+/* ============================================================
+   014 — SMOOTHSTEP
+   ============================================================ */
+function smooth(t){
+  t=clamp(t,0,1);
+  return t*t*(3-2*t);
+}
+
+/* ============================================================
+   015 — EASE IN OUT
+   ============================================================ */
+function easeInOut(t){
+  t=clamp(t,0,1);
+  return t<.5
+    ? 2*t*t
+    : 1-Math.pow(-2*t+2,2)/2;
+}
+
+/* ============================================================
+   016 — EASE OUT
+   ============================================================ */
+function easeOut(t){
+  t=clamp(t,0,1);
+  return 1-Math.pow(1-t,3);
+}
+
+/* ============================================================
+   017 — DEGREES
+   ============================================================ */
+const DEG=Math.PI/180;
+
+/* ============================================================
+   018 — DEVICE PIXEL RATIO
+   ============================================================ */
+let dpr=1;
+let frameBasis=null;
+
+/* ============================================================
+   019 — VIEWPORT
+   ============================================================ */
+const viewport={
+  width:1,
+  height:1,
+  centerX:.5,
+  centerY:.5
+};
+
+/* ============================================================
+   020 — RESIZE
+   ============================================================ */
+function resize(){
+  dpr=Math.min(window.devicePixelRatio||1,2);
+
+  const w=Math.max(
+    1,
+    Math.floor(canvas.clientWidth*dpr)
+  );
+
+  const h=Math.max(
+    1,
+    Math.floor(canvas.clientHeight*dpr)
+  );
+
+  if(canvas.width!==w||canvas.height!==h){
+    canvas.width=w;
+    canvas.height=h;
+  }
+
+  viewport.width=w/dpr;
+  viewport.height=h/dpr;
+  viewport.centerX=viewport.width*.5;
+  viewport.centerY=viewport.height*.5;
+}
+
+window.addEventListener("resize",resize);
+
+/* ============================================================
+   021 — PALETTE
+   ============================================================ */
+const C={
+  background:[237,241,244],
+  ground:[230,234,238],
+  grid:[200,207,214],
+  ink:[25,36,46],
+  muted:[91,105,116],
+  metal:[188,196,202],
+  metalBright:[216,220,223],
+  metalDark:[133,143,151],
+  tim:[143,124,80],
+  silicon:[49,58,69],
+  siliconTop:[59,69,81],
+  substrate:[29,36,43],
+  substrate2:[37,45,52],
+  gold:[187,143,49],
+  goldBright:[226,188,71],
+  logic:[55,105,157],
+  logic2:[66,122,179],
+  core:[42,90,140],
+  cache:[126,94,45],
+  control:[54,91,127],
+  register:[54,119,92],
+  ramBoard:[48,117,90],
+  ramEdge:[23,36,33],
+  ramChip:[29,34,38],
+  white:[250,251,252],
+  shadow:[28,38,47]
+};
+
+/* ============================================================
+   022 — LIGHT DIRECTIONS
+   ============================================================ */
+const light={
+  key:vNorm(V(-.48,1,.58)),
+  fill:vNorm(V(.72,.28,-.22)),
+  rim:vNorm(V(-.05,.2,-1))
+};
+
+/* ============================================================
+   023 — COLOR MIX
+   ============================================================ */
+function colorMix(a,b,t){
+  return [
+    lerp(a[0],b[0],t),
+    lerp(a[1],b[1],t),
+    lerp(a[2],b[2],t)
+  ];
+}
+
+/* ============================================================
+   024 — COLOR TO CSS
+   ============================================================ */
+function colorCss(c,alpha=1){
+  return `rgba(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])},${alpha})`;
+}
+
+/* ============================================================
+   025 — MATERIAL SHADING
+   ============================================================ */
+function shade(base,normal,boost=0){
+  const n=vNorm(normal);
+
+  const key=Math.max(0,vDot(n,light.key));
+  const fill=Math.max(0,vDot(n,light.fill));
+  const rim=Math.max(0,vDot(n,light.rim));
+
+  let f=.57 + key*.34 + fill*.11 + rim*.06 + boost;
+  f=clamp(f,.38,1.28);
+
+  return base.map(v=>clamp(v*f,0,255));
+}
+
+/* ============================================================
+   026 — CAMERA STATE
+   ============================================================ */
+const camera={
+  yaw:.64,
+  pitch:.62,
+  distance:12.7,
+  targetYaw:.64,
+  targetPitch:.62,
+  targetDistance:12.7,
+  focus:V(0,.1,0),
+  targetFocus:V(0,.1,0),
+  focal:760
+};
+
+/* ============================================================
+   027 — CAMERA RESET
+   ============================================================ */
+function resetCamera(){
+  camera.yaw=.64;
+  camera.pitch=.62;
+  camera.distance=12.7;
+
+  camera.targetYaw=.64;
+  camera.targetPitch=.62;
+  camera.targetDistance=12.7;
+
+  camera.focus=V(0,.1,0);
+  camera.targetFocus=V(0,.1,0);
+}
+
+/* ============================================================
+   028 — CAMERA EYE
+   ============================================================ */
+function cameraEye(){
+  const cp=Math.cos(camera.pitch);
+
+  return V(
+    camera.focus.x+
+      Math.sin(camera.yaw)*cp*camera.distance,
+
+    camera.focus.y+
+      Math.sin(camera.pitch)*camera.distance,
+
+    camera.focus.z+
+      Math.cos(camera.yaw)*cp*camera.distance
+  );
+}
+
+/* ============================================================
+   029 — CAMERA UPDATE
+   ============================================================ */
+function updateCamera(){
+  camera.targetYaw=lerp(
+    camera.targetYaw,
+    camera.yaw,
+    .11
+  );
+
+  camera.targetPitch=lerp(
+    camera.targetPitch,
+    camera.pitch,
+    .11
+  );
+
+  camera.targetDistance=lerp(
+    camera.targetDistance,
+    camera.distance,
+    .11
+  );
+
+  camera.focus=vLerp(
+    camera.focus,
+    camera.targetFocus,
+    .085
+  );
+}
+
+/* ============================================================
+   030 — CAMERA BASIS
+   ============================================================ */
+function cameraBasis(){
+  const eye=cameraEye();
+
+  const forward=vNorm(
+    vSub(camera.focus,eye)
+  );
+
+  const right=vNorm(
+    vCross(forward,V(0,1,0))
+  );
+
+  const up=vNorm(
+    vCross(right,forward)
+  );
+
+  return {
+    eye,
+    forward,
+    right,
+    up
+  };
+}
+
+/* ============================================================
+   031 — PROJECT 3D → 2D
+   ============================================================ */
+function project(p){
+  const b=frameBasis||cameraBasis();
+  const rel=vSub(p,b.eye);
+
+  const depth=vDot(
+    rel,
+    b.forward
+  );
+
+  if(depth<=.05){
+    return null;
+  }
+
+  const x=vDot(
+    rel,
+    b.right
+  );
+
+  const y=vDot(
+    rel,
+    b.up
+  );
+
+  const scale=camera.focal/depth;
+
+  return {
+    x:viewport.centerX+x*scale,
+    y:viewport.centerY-y*scale,
+    z:depth,
+    scale
+  };
+}
+
+/* ============================================================
+   032 — POLYGON PATH
+   ============================================================ */
+function polyPath(points){
+  if(!points.length){
+    return;
+  }
+
+  ctx.beginPath();
+  ctx.moveTo(
+    points[0].x,
+    points[0].y
+  );
+
+  for(let i=1;i<points.length;i++){
+    ctx.lineTo(
+      points[i].x,
+      points[i].y
+    );
+  }
+
+  ctx.closePath();
+}
+
+/* ============================================================
+   033 — FILL POLYGON
+   ============================================================ */
+function fillPoly(points,fill,stroke=null,width=1){
+  polyPath(points);
+
+  ctx.fillStyle=fill;
+  ctx.fill();
+
+  if(stroke){
+    ctx.strokeStyle=stroke;
+    ctx.lineWidth=width;
+    ctx.stroke();
+  }
+}
+
+/* ============================================================
+   034 — LINE
+   ============================================================ */
+function drawLine(a,b,color,width=1,dash=null){
+  ctx.save();
+
+  ctx.strokeStyle=color;
+  ctx.lineWidth=width;
+
+  if(dash){
+    ctx.setLineDash(dash);
+  }
+
+  ctx.beginPath();
+  ctx.moveTo(a.x,a.y);
+  ctx.lineTo(b.x,b.y);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+/* ============================================================
+   035 — 3D BOX VERTICES
+   ============================================================ */
+function boxVerts(center,size,rotationY=0){
+  const hx=size.x*.5;
+  const hy=size.y*.5;
+  const hz=size.z*.5;
+
+  const local=[
+    V(-hx,-hy,-hz),
+    V(hx,-hy,-hz),
+    V(hx,hy,-hz),
+    V(-hx,hy,-hz),
+    V(-hx,-hy,hz),
+    V(hx,-hy,hz),
+    V(hx,hy,hz),
+    V(-hx,hy,hz)
+  ];
+
+  const c=Math.cos(rotationY);
+  const s=Math.sin(rotationY);
+
+  return local.map(v=>{
+    const x=v.x*c-v.z*s;
+    const z=v.x*s+v.z*c;
+
+    return vAdd(
+      center,
+      V(x,v.y,z)
+    );
+  });
+}
+
+/* ============================================================
+   036 — BOX FACES
+   ============================================================ */
+const BOX_FACES=[
+  {i:[0,1,2,3],n:V(0,0,-1)},
+  {i:[4,7,6,5],n:V(0,0,1)},
+  {i:[0,4,5,1],n:V(0,-1,0)},
+  {i:[3,2,6,7],n:V(0,1,0)},
+  {i:[0,3,7,4],n:V(-1,0,0)},
+  {i:[1,5,6,2],n:V(1,0,0)}
+];
+
+/* ============================================================
+   037 — BOX FACE LIST
+   ============================================================ */
+function boxFaceList(center,size,color,rotationY=0,boost=0,stroke){
+  const verts=boxVerts(
+    center,
+    size,
+    rotationY
+  );
+
+  const projected=verts.map(project);
+
+  if(projected.some(v=>!v)){
+    return [];
+  }
+
+  const list=[];
+
+  for(const face of BOX_FACES){
+    const p=face.i.map(i=>projected[i]);
+
+    const depth=(
+      projected[face.i[0]].z+
+      projected[face.i[1]].z+
+      projected[face.i[2]].z+
+      projected[face.i[3]].z
+    )/4;
+
+    list.push({
+      p,
+      depth,
+      fill:colorCss(
+        shade(color,face.n,boost)
+      ),
+      stroke:stroke||"rgba(31,42,51,.34)"
+    });
+  }
+
+  return list.sort(
+    (a,b)=>b.depth-a.depth
+  );
+}
+
+/* ============================================================
+   038 — DRAW BOX
+   ============================================================ */
+function drawBox(center,size,color,rotationY=0,options={}){
+  const faces=boxFaceList(
+    center,
+    size,
+    color,
+    rotationY,
+    options.boost||0,
+    options.stroke
+  );
+
+  for(const f of faces){
+    fillPoly(
+      f.p,
+      f.fill,
+      f.stroke,
+      options.lineWidth||.8
+    );
+  }
+}
+
+/* ============================================================
+   039 — BEVELED BOX
+   ============================================================ */
+function drawBevelBox(center,size,color,rotationY=0,bev=.08,options={}){
+  drawBox(
+    vAdd(center,V(0,-bev*.18,0)),
+    size,
+    color,
+    rotationY,
+    options
+  );
+
+  const inset=V(
+    Math.max(.05,size.x-bev*.16),
+    Math.max(.03,bev*.50),
+    Math.max(.05,size.z-bev*.16)
+  );
+
+  drawBox(
+    vAdd(
+      center,
+      V(
+        0,
+        size.y*.5-bev*.18,
+        0
+      )
+    ),
+    inset,
+    colorMix(
+      color,
+      C.white,
+      .14
+    ),
+    rotationY,
+    {
+      boost:(options.boost||0)+.02,
+      stroke:options.stroke||"rgba(32,43,52,.22)",
+      lineWidth:.7
+    }
+  );
+}
+
+/* ============================================================
+   040 — TOP FACE QUAD
+   ============================================================ */
+function topQuad(center,size,rotationY=0){
+  const hx=size.x*.5;
+  const hz=size.z*.5;
+  const y=center.y+size.y*.5+.004;
+
+  const q=[
+    V(-hx,y,-hz),
+    V(hx,y,-hz),
+    V(hx,y,hz),
+    V(-hx,y,hz)
+  ];
+
+  const c=Math.cos(rotationY);
+  const s=Math.sin(rotationY);
+
+  return q.map(v=>{
+    const x=v.x*c-v.z*s;
+    const z=v.x*s+v.z*c;
+
+    return project(
+      vAdd(center,V(x-v.x,v.y-center.y,z-v.z))
+    );
+  });
+}
+
+/* ============================================================
+   041 — TOP CLIP REGION
+   ============================================================ */
+function clipTop(center,size,rotationY=0){
+  const verts=boxVerts(
+    center,
+    V(size.x,size.y+.006,size.z),
+    rotationY
+  );
+
+  const top=[
+    verts[3],
+    verts[2],
+    verts[6],
+    verts[7]
+  ].map(project);
+
+  if(top.some(v=>!v)){
+    return false;
+  }
+
+  polyPath(top);
+  ctx.clip();
+  return true;
+}
+
+
+/* ============================================================
+   040B — PIXEL BACKDROP
+   ============================================================ */
+const pixelBackdrop={
+  canvas:document.createElement("canvas"),
+  ready:false
+};
+
+function buildPixelBackdrop(){
+  const c=pixelBackdrop.canvas;
+  c.width=160;
+  c.height=90;
+
+  const g=c.getContext("2d");
+  g.imageSmoothingEnabled=false;
+
+  g.fillStyle="#edf1f4";
+  g.fillRect(0,0,c.width,c.height);
+
+  /* broad pixel bands */
+  for(let y=0;y<c.height;y+=6){
+    for(let x=0;x<c.width;x+=6){
+      const checker=((x/6+y/6)%2===0);
+      g.fillStyle=
+        checker
+          ?"rgba(196,204,211,.13)"
+          :"rgba(255,255,255,.10)";
+      g.fillRect(x,y,6,6);
+    }
+  }
+
+  /* subtle circuit-like background marks */
+  g.fillStyle="rgba(89,105,118,.16)";
+  for(let i=0;i<18;i++){
+    const x=7+(i*29)%145;
+    const y=8+(i*17)%72;
+    g.fillRect(x,y,10,2);
+    g.fillRect(x+8,y,2,7);
+    g.fillRect(x+8,y+7,5,2);
+  }
+
+  /* sparse square pixels */
+  g.fillStyle="rgba(61,110,164,.10)";
+  for(let i=0;i<70;i++){
+    const x=(i*37)%158;
+    const y=(i*19)%88;
+    g.fillRect(x,y,1+(i%2),1+(i%2));
+  }
+
+  pixelBackdrop.ready=true;
+}
+
+function drawPixelBackdrop(){
+  if(!pixelBackdrop.ready){
+    buildPixelBackdrop();
+  }
+
+  const logicalW=canvas.width/dpr;
+  const logicalH=canvas.height/dpr;
+
+  ctx.save();
+  ctx.imageSmoothingEnabled=false;
+  ctx.globalAlpha=.68;
+  ctx.drawImage(
+    pixelBackdrop.canvas,
+    0,
+    0,
+    logicalW,
+    logicalH
+  );
+  ctx.restore();
+}
+
+/* ============================================================
+   042 — GROUND
+   ============================================================ */
+function drawGround(){
+  const y=-1.28;
+  const size=17;
+
+  const q=[
+    project(V(-size,y,-size)),
+    project(V(size,y,-size)),
+    project(V(size,y,size)),
+    project(V(-size,y,size))
+  ];
+
+  if(q.every(Boolean)){
+    fillPoly(
+      q,
+      colorCss(C.ground)
+    );
+  }
+
+  const start=-10;
+  const end=10;
+  const step=.75;
+
+  for(let i=start;i<=end;i++){
+    const a=project(
+      V(i*step,y+.003,start*step)
+    );
+    const b=project(
+      V(i*step,y+.003,end*step)
+    );
+
+    if(a&&b){
+      drawLine(
+        a,
+        b,
+        "rgba(190,198,205,.40)",
+        .8
+      );
+    }
+  }
+
+  for(let i=start;i<=end;i++){
+    const a=project(
+      V(start*step,y+.004,i*step)
+    );
+    const b=project(
+      V(end*step,y+.004,i*step)
+    );
+
+    if(a&&b){
+      drawLine(
+        a,
+        b,
+        "rgba(190,198,205,.40)",
+        .8
+      );
+    }
+  }
+}
+
+/* ============================================================
+   043 — SHADOW ELLIPSE
+   ============================================================ */
+function shadowEllipse(world,sizeX,sizeY,alpha=.11){
+  const p=project(world);
+
+  if(!p){
+    return;
+  }
+
+  ctx.save();
+
+  ctx.fillStyle=colorCss(
+    C.shadow,
+    alpha
+  );
+
+  ctx.beginPath();
+
+  ctx.ellipse(
+    p.x,
+    p.y,
+    sizeX*p.scale,
+    sizeY*p.scale,
+    -.08,
+    0,
+    Math.PI*2
+  );
+
+  ctx.fill();
+  ctx.restore();
+}
+
+/* ============================================================
+   044 — PROJECTED TEXT
+   ============================================================ */
+function projectText(text,world,size=11,color="#52616d",weight=700){
+  const p=project(world);
+
+  if(!p){
+    return;
+  }
+
+  ctx.save();
+
+  ctx.fillStyle=color;
+  ctx.font=`${weight} ${Math.max(8,size*p.scale/700)}px Arial,sans-serif`;
+  ctx.textAlign="center";
+  ctx.textBaseline="middle";
+  ctx.fillText(
+    text,
+    p.x,
+    p.y
+  );
+
+  ctx.restore();
+}
+
+/* ============================================================
+   045 — SCREEN LABEL
+   ============================================================ */
+function screenLabel(text,x,y,options={}){
+  const fontSize=(options.size||10)*dpr;
+  const padX=options.padX||9;
+  const height=(options.height||19)*dpr;
+
+  ctx.save();
+
+  ctx.font=`${options.weight||700} ${fontSize}px Arial,sans-serif`;
+
+  const width=
+    ctx.measureText(text).width+
+    padX*2*dpr;
+
+  roundedRect(
+    x-width*.5,
+    y-height*.5,
+    width,
+    height,
+    height*.5,
+    options.bg||"rgba(255,255,255,.94)",
+    options.border||"rgba(167,179,190,.75)",
+    .8*dpr
+  );
+
+  ctx.fillStyle=options.color||"#52616d";
+  ctx.textAlign="center";
+  ctx.textBaseline="middle";
+
+  ctx.fillText(
+    text,
+    x,
+    y
+  );
+
+  ctx.restore();
+}
+
+/* ============================================================
+   046 — ROUNDED RECT
+   ============================================================ */
+function roundedRect(x,y,w,h,r,fill,stroke=null,width=1){
+  ctx.beginPath();
+
+  if(ctx.roundRect){
+    ctx.roundRect(
+      x,
+      y,
+      w,
+      h,
+      r
+    );
+  }else{
+    ctx.moveTo(x+r,y);
+    ctx.lineTo(x+w-r,y);
+    ctx.quadraticCurveTo(
+      x+w,
+      y,
+      x+w,
+      y+r
+    );
+    ctx.lineTo(x+w,y+h-r);
+    ctx.quadraticCurveTo(
+      x+w,
+      y+h,
+      x+w-r,
+      y+h
+    );
+    ctx.lineTo(x+r,y+h);
+    ctx.quadraticCurveTo(
+      x,
+      y+h,
+      x,
+      y+h-r
+    );
+    ctx.lineTo(x,y+r);
+    ctx.quadraticCurveTo(
+      x,
+      y,
+      x+r,
+      y
+    );
+  }
+
+  ctx.fillStyle=fill;
+  ctx.fill();
+
+  if(stroke){
+    ctx.lineWidth=width;
+    ctx.strokeStyle=stroke;
+    ctx.stroke();
+  }
+}
+
+/* ============================================================
+   047 — MODEL STATE
+   ============================================================ */
+const model={
+  cpuExploded:0,
+  cpuExplodedTarget:0,
+  ramAlpha:1,
+  ramAlphaTarget:1,
+  selected:null,
+  hover:null
+};
+
+/* ============================================================
+   048 — CPU LAYERS
+   ============================================================ */
+const cpuLayers=[
+  {
+    id:"substrate",
+    name:"PACKAGE / SUBSTRATE",
+    y:-.15,
+    size:V(5.00,.34,4.35),
+    color:C.substrate,
+    offset:-.28
+  },
+  {
+    id:"contacts",
+    name:"CONTACT PADS",
+    y:-.42,
+    size:V(4.86,.11,4.24),
+    color:C.gold,
+    offset:-.63
+  },
+  {
+    id:"die",
+    name:"SILICON DIE",
+    y:.34,
+    size:V(4.08,.22,3.42),
+    color:C.silicon,
+    offset:.72
+  },
+  {
+    id:"tim",
+    name:"THERMAL INTERFACE MATERIAL",
+    y:.71,
+    size:V(4.12,.07,3.45),
+    color:C.tim,
+    offset:1.00
+  },
+  {
+    id:"ihs",
+    name:"HEAT SPREADER",
+    y:1.15,
+    size:V(5.18,.54,4.56),
+    color:C.metal,
+    offset:1.48
+  }
+];
+
+/* ============================================================
+   049 — DIE INTERNALS
+   ============================================================ */
+const dieBlocks=[
+  {
+    id:"core01",
+    name:"CORE 01",
+    pos:V(-1.04,.54,-.91),
+    size:V(1.16,.14,.82),
+    color:C.core,
+    type:"core"
+  },
+  {
+    id:"core02",
+    name:"CORE 02",
+    pos:V(1.04,.54,-.91),
+    size:V(1.16,.14,.82),
+    color:C.core,
+    type:"core"
+  },
+  {
+    id:"core03",
+    name:"CORE 03",
+    pos:V(-1.04,.54,.91),
+    size:V(1.16,.14,.82),
+    color:C.core,
+    type:"core"
+  },
+  {
+    id:"core04",
+    name:"CORE 04",
+    pos:V(1.04,.54,.91),
+    size:V(1.16,.14,.82),
+    color:C.core,
+    type:"core"
+  },
+  {
+    id:"cache",
+    name:"CACHE",
+    pos:V(0,.54,0),
+    size:V(.82,.14,2.30),
+    color:C.cache,
+    type:"cache"
+  },
+  {
+    id:"alu",
+    name:"ALU",
+    pos:V(-.90,.54,0),
+    size:V(.56,.14,.64),
+    color:[176,129,54],
+    type:"alu"
+  },
+  {
+    id:"control",
+    name:"CONTROL UNIT",
+    pos:V(.90,.54,0),
+    size:V(.74,.14,.64),
+    color:C.control,
+    type:"control"
+  },
+  {
+    id:"register",
+    name:"REGISTER",
+    pos:V(0,.55,0),
+    size:V(.45,.14,.54),
+    color:C.register,
+    type:"register"
+  }
+];
+
+/* ============================================================
+   050 — RAM MODEL
+   ============================================================ */
+const ramModel={
+  origin:V(4.05,.18,-.20),
+  rotation:-.14,
+  board:V(1.20,.16,4.78),
+  spreader:V(1.12,.10,4.68),
+  edge:V(1.24,.06,4.84)
+};
+
+/* ============================================================
+   051 — RAM CHIPS
+   ============================================================ */
+const ramChips=[
+  -1.77,
+  -1.24,
+  -.71,
+  -.18,
+  .35,
+  .88,
+  1.41,
+  1.78
+];
+
+/* ============================================================
+   052 — INFORMATION
+   ============================================================ */
+const info={
+  "HEAT SPREADER":{
+    title:"Heat Spreader",
+    body:"Penutup logam pada processor yang membantu menyebarkan panas dari wilayah die ke area yang lebih luas."
+  },
+  "THERMAL INTERFACE MATERIAL":{
+    title:"Thermal Interface Material",
+    body:"Lapisan tipis di antara die dan heat spreader yang membantu meningkatkan kontak termal."
+  },
+  "SILICON DIE":{
+    title:"Silicon Die",
+    body:"Area semikonduktor utama. Saat CPU dibongkar, die memperlihatkan core, cache, ALU, Control Unit, register, dan interconnect."
+  },
+  "PACKAGE / SUBSTRATE":{
+    title:"CPU Package / Substrate",
+    body:"Substrat menjadi penghubung mekanis dan elektrik antara die dengan contact pads."
+  },
+  "CONTACT PADS":{
+    title:"Contact Pads",
+    body:"Array kontak logam pada sisi bawah package yang menjadi antarmuka elektrik processor."
+  },
+  "RAM":{
+    title:"RAM · DDR",
+    body:"Memori utama volatil untuk instruksi dan data yang sedang dipakai sistem. Modul digambarkan sebagai PCB, memory chips, notch, dan gold contacts."
+  },
+  "CORE 01":{
+    title:"CORE 01",
+    body:"Unit pemrosesan pertama pada model die. Core bertanggung jawab menjalankan rangkaian instruksi."
+  },
+  "CORE 02":{
+    title:"CORE 02",
+    body:"Unit pemrosesan kedua pada model die."
+  },
+  "CORE 03":{
+    title:"CORE 03",
+    body:"Unit pemrosesan ketiga pada model die."
+  },
+  "CORE 04":{
+    title:"CORE 04",
+    body:"Unit pemrosesan keempat pada model die."
+  },
+  "CACHE":{
+    title:"CACHE",
+    body:"Memori berlatensi rendah yang ditempatkan dekat execution resources untuk mempercepat akses data dan instruksi yang sering dipakai."
+  },
+  "ALU":{
+    title:"ALU",
+    body:"Arithmetic Logic Unit. Menjalankan operasi aritmatika dan logika dalam execution stage."
+  },
+  "CONTROL UNIT":{
+    title:"CONTROL UNIT",
+    body:"Bagian kontrol yang membaca dan menerjemahkan instruksi serta mengoordinasikan perpindahan data."
+  },
+  "REGISTER":{
+    title:"REGISTER",
+    body:"Penyimpanan sangat cepat di CPU untuk data, operand, alamat, atau informasi instruksi sementara."
+  }
+};
+
+/* ============================================================
+   053 — INSTRUCTION STEPS
+   ============================================================ */
+
+/* ============================================================
+   ULTRA HIGH — LONG EDUCATIONAL NARRATIVES
+   ============================================================ */
+const longLesson = {
+  "HEAT SPREADER": {
+    tag:"PHYSICAL LAYER",
+    p1:"Heat spreader adalah penutup pada bagian atas package processor. Secara fisik ia bukan tempat instruksi dieksekusi; perannya berkaitan dengan distribusi panas sehingga area panas pada die tidak terkonsentrasi hanya pada satu titik.",
+    p2:"Dalam pembelajaran anatomi CPU, layer ini penting karena menunjukkan bahwa processor modern tidak hanya terdiri dari logika semikonduktor. Ada rangkaian material yang menyatukan aspek mekanis, termal, dan elektrik menjadi satu package.",
+    tip:"Fokuskan perhatian pada bentuk dan posisinya terhadap TIM dan die. Jarak exploded view digunakan untuk membantu memisahkan fungsi setiap layer.",
+    flow:["HEAT SPREADER","TIM","SILICON DIE"]
+  },
+  "THERMAL INTERFACE MATERIAL": {
+    tag:"THERMAL LAYER",
+    p1:"Thermal Interface Material (TIM) berada di antara die dan heat spreader. Lapisan ini membantu meningkatkan kontak termal dengan mengisi ketidakrataan mikroskopis pada permukaan yang saling bertemu.",
+    p2:"Secara konseptual, TIM menjelaskan bahwa performa processor dipengaruhi bukan hanya oleh kemampuan logika, tetapi juga oleh bagaimana panas dari area semikonduktor dipindahkan keluar dari die.",
+    tip:"Perhatikan bahwa TIM dibuat jauh lebih tipis daripada layer lain. Proporsi visual ini sengaja menekankan fungsi lapisan antarmuka.",
+    flow:["SILICON DIE","TIM","HEAT SPREADER"]
+  },
+  "SILICON DIE": {
+    tag:"SEMICONDUCTOR",
+    p1:"Silicon die merupakan bagian semikonduktor tempat resource pemrosesan ditempatkan. Di sinilah model pembelajaran membuka perspektif dari package fisik menuju organisasi internal processor.",
+    p2:"Blok Core, Cache, ALU, Control Unit, Register, dan jalur interconnect pada model ini adalah representasi edukatif. Tujuannya adalah membantu pengguna memahami pembagian fungsi, bukan meniru layout transistor satu processor komersial tertentu secara literal.",
+    tip:"Setelah die terbuka, klik setiap blok satu per satu. Bandingkan peran execution, storage sementara, cache, dan kontrol.",
+    flow:["CORE","CACHE","CONTROL","REGISTER","ALU"]
+  },
+  "PACKAGE / SUBSTRATE": {
+    tag:"PACKAGE",
+    p1:"Substrate adalah bagian package yang membawa die dan menyediakan koneksi antara wilayah semikonduktor dengan kontak pada bagian bawah processor.",
+    p2:"Secara visual, routing dan pad pada substrate membantu menjelaskan bahwa data dan sinyal tidak berpindah secara ajaib dari die menuju sistem. Ada struktur interkoneksi fisik yang menjadi antarmuka.",
+    tip:"Amati pola trace dan array kontak ketika CPU dibongkar.",
+    flow:["SILICON DIE","SUBSTRATE","CONTACT PADS"]
+  },
+  "CONTACT PADS": {
+    tag:"ELECTRICAL INTERFACE",
+    p1:"Contact pads adalah titik kontak elektrik di sisi bawah package. Dalam konteks pembelajaran, bagian ini menunjukkan bagaimana package processor menyediakan banyak koneksi keluar-masuk.",
+    p2:"Array kontak terlihat berulang dan teratur karena koneksi fisik membutuhkan susunan yang konsisten. Representasi ini juga membantu membedakan package dari silicon die.",
+    tip:"Bandingkan contact pads dengan memory module. Keduanya memakai logam sebagai bagian dari antarmuka elektrik, tetapi bentuk dan skala sistemnya berbeda.",
+    flow:["PACKAGE","CONTACT PADS","SYSTEM INTERFACE"]
+  },
+  "RAM": {
+    tag:"MAIN MEMORY",
+    p1:"RAM adalah memori utama volatil yang menyimpan instruksi dan data yang sedang dibutuhkan sistem. Dalam lab ini RAM divisualisasikan sebagai modul terpisah agar hubungan memori utama dan processor mudah dilihat.",
+    p2:"Saat simulasi LOAD dimulai, RAM digunakan sebagai titik asal instruksi pada visualisasi. RAM kemudian dibuat lebih transparan agar perhatian pengguna berpindah ke resource CPU yang sedang menerima atau menerjemahkan informasi.",
+    tip:"Perhatikan bahwa RAM bukan bagian dari silicon die CPU. Ia merupakan komponen memori terpisah yang berhubungan dengan processor melalui antarmuka memori.",
+    flow:["RAM","CACHE","REGISTER"]
+  },
+  "CORE 01": {
+    tag:"EXECUTION",
+    p1:"Core adalah unit pemrosesan yang mengeksekusi instruksi. Empat core pada model ini dipakai untuk menunjukkan konsep multi-core secara visual tanpa mengikat model pada layout processor vendor tertentu.",
+    p2:"Satu core bukan sekadar kotak yang menerima data. Ia merupakan lingkungan pemrosesan yang berisi berbagai resource internal. Lab menyederhanakannya menjadi satu blok visual agar fokus tetap pada fungsi arsitektural.",
+    tip:"Bandingkan Core 01 hingga Core 04. Bentuknya serupa, tetapi secara konseptual tiap core adalah unit pemrosesan yang dapat menangani pekerjaan instruksi sendiri.",
+    flow:["INSTRUCTION","CORE","EXECUTION"]
+  },
+  "CORE 02": {
+    tag:"EXECUTION",
+    p1:"Core kedua menunjukkan prinsip dasar processor multi-core: beberapa unit pemrosesan dapat hidup dalam satu package processor.",
+    p2:"Pada visualisasi ini Core 02 diberi bentuk dan warna yang konsisten dengan core lain. Konsistensi tersebut membantu pengguna memahami bahwa 'core' adalah kategori arsitektur, bukan sekadar nama objek.",
+    tip:"Gunakan tombol inspect untuk melihat bloknya secara dekat.",
+    flow:["INSTRUCTION","CORE 02","EXECUTION"]
+  },
+  "CORE 03": {
+    tag:"EXECUTION",
+    p1:"Core ketiga memperkuat konsep paralelisme tingkat core. Model tidak melakukan benchmarking atau scheduling nyata; fokusnya adalah pengenalan struktur internal.",
+    p2:"Dalam CPU modern, detail internal sebuah core jauh lebih kaya daripada blok pada model ini. Penyederhanaan visual dipakai agar organisasi dasar tetap mudah dipahami mahasiswa pemula.",
+    tip:"Lihat Core 03 bersama cache dan interconnect pada die untuk memahami bahwa core bekerja sebagai bagian dari sistem internal.",
+    flow:["CORE 03","CACHE","INTERCONNECT"]
+  },
+  "CORE 04": {
+    tag:"EXECUTION",
+    p1:"Core keempat merupakan unit pemrosesan terakhir pada model. Kehadiran empat core menunjukkan bahwa processor dapat memiliki beberapa jalur pemrosesan dalam satu package.",
+    p2:"Dengan melihat empat core sekaligus, pengguna dapat membedakan konsep 'jumlah core' dari 'jenis instruksi'. Jumlah core adalah karakteristik organisasi pemrosesan, sedangkan instruksi menentukan pekerjaan apa yang diminta.",
+    tip:"Jangan menganggap semua CPU memiliki empat core. Angka empat di model ini adalah contoh edukatif.",
+    flow:["4 CORES","PARALLEL WORK","PROCESSOR"]
+  },
+  "CACHE": {
+    tag:"FAST MEMORY",
+    p1:"Cache adalah memori berlatensi rendah yang ditempatkan dekat dengan resource pemrosesan. Tujuan utamanya adalah menjaga data atau instruksi yang sering dibutuhkan tetap tersedia lebih dekat dibanding harus selalu mengandalkan memori utama.",
+    p2:"Model ini memberi label L1–L3 di panel, tetapi blok cache pada die adalah representasi gabungan agar konsep hierarki cache mudah diperkenalkan tanpa memperumit tampilan.",
+    tip:"Dalam simulasi LOAD, cache dijadikan titik penting setelah instruksi diambil dari RAM.",
+    flow:["RAM","CACHE","CORE / REGISTER"]
+  },
+  "ALU": {
+    tag:"EXECUTION",
+    p1:"ALU adalah Arithmetic Logic Unit. Ia melakukan operasi aritmatika dan logika sebagai bagian dari tahap execution. Untuk contoh LOAD, ALU bukan tokoh utama pada pemindahan data, tetapi tetap penting sebagai resource execution.",
+    p2:"Menampilkan ALU di die membantu pengguna melihat bahwa CPU memiliki resource berbeda dengan tugas berbeda: ada unit kontrol, unit penyimpanan cepat, cache, dan execution unit.",
+    tip:"Gunakan inspect ALU untuk membedakan execution resource dari Control Unit.",
+    flow:["DECODE","EXECUTE","ALU"]
+  },
+  "CONTROL UNIT": {
+    tag:"CONTROL",
+    p1:"Control Unit bertugas membaca serta menerjemahkan instruksi dan mengoordinasikan sinyal kontrol yang diperlukan untuk menjalankan tahap-tahap instruksi.",
+    p2:"Pada simulasi LOAD, Control Unit menjadi fokus pada tahap DECODE. Visualisasi menekankan bahwa opcode tidak sekadar bergerak sebagai angka; instruksi perlu ditafsirkan agar processor mengetahui tindakan yang diminta.",
+    tip:"Perhatikan highlight Control Unit pada step DECODE.",
+    flow:["REGISTER / IR","CONTROL","ACTION"]
+  },
+  "REGISTER": {
+    tag:"FAST STORAGE",
+    p1:"Register adalah penyimpanan sangat cepat di dalam CPU. Register dapat menyimpan operand, alamat, status, atau informasi instruksi sementara yang dibutuhkan selama eksekusi.",
+    p2:"Pada contoh LOAD, register akhirnya menerima nilai 42. Perubahan '?' menjadi '42' pada panel menunjukkan perubahan keadaan internal yang dihasilkan oleh rangkaian langkah sebelumnya.",
+    tip:"Amati perbedaan fungsi register dengan cache: keduanya cepat, tetapi peran arsitektural dan konteks penggunaannya berbeda.",
+    flow:["CACHE","REGISTER","OUTPUT"]
+  }
+};
+
+const steps=[
+  {
+    name:"FETCH",
+    description:"CPU mengambil instruksi LOAD dari RAM. Tujuan tahap ini adalah memperoleh instruction stream sebelum processor menafsirkan atau menjalankannya.",
+    route:"RAM → CPU / CACHE",
+    source:"ram",
+    target:"cache",
+    packet:"LOAD"
+  },
+  {
+    name:"CACHE",
+    description:"Instruksi/data diperiksa di cache sebelum diteruskan.",
+    route:"RAM → CACHE",
+    source:"ram",
+    target:"cache",
+    packet:"LOAD"
+  },
+  {
+    name:"REGISTER",
+    description:"Alamat atau data sementara masuk ke register. Register menjadi storage cepat untuk state yang diperlukan pada tahap berikutnya.",
+    route:"CACHE → REGISTER",
+    source:"cache",
+    target:"register",
+    packet:"?"
+  },
+  {
+    name:"DECODE",
+    description:"Control Unit membaca dan menerjemahkan instruksi LOAD. Tahap ini menunjukkan pemisahan antara kontrol instruksi dan execution resource.",
+    route:"REGISTER → CONTROL",
+    source:"register",
+    target:"control",
+    packet:"LOAD"
+  },
+  {
+    name:"ACCESS",
+    description:"CPU mengambil DATA = 42 dari jalur memori/cache. Packet data divisualisasikan menuju register sebelum menjadi state akhir.",
+    route:"CACHE → REGISTER",
+    source:"cache",
+    target:"register",
+    packet:"42"
+  },
+  {
+    name:"WRITE / OUTPUT",
+    description:"Data 42 ditulis ke register dan menjadi output. Panel AX berubah dari ? menjadi 42 untuk menandai perubahan state.",
+    route:"REGISTER → OUTPUT",
+    source:"register",
+    target:"output",
+    packet:"42"
+  }
+];
+
+/* ============================================================
+   054 — SIMULATION STATE
+   ============================================================ */
+const sim={
+  step:0,
+  mode:"idle",
+  elapsed:0,
+  cycle:0
+};
+
+
+/* ============================================================
+   054B — OFFLINE BACKSOUND / CHIP AUDIO
+   ============================================================ */
+const audio={
+  ctx:null,
+  master:null,
+  timer:null,
+  enabled:false,
+  index:0,
+  notes:[110,147,165,196,165,147,123,147],
+  gain:.028
+};
+
+function ensureAudio(){
+  if(audio.ctx){
+    if(audio.ctx.state==="suspended"){
+      audio.ctx.resume().catch(()=>{});
+    }
+    return true;
+  }
+
+  const AudioCtx=
+    window.AudioContext||
+    window.webkitAudioContext;
+
+  if(!AudioCtx){
+    return false;
+  }
+
+  try{
+    audio.ctx=new AudioCtx();
+
+    audio.master=
+      audio.ctx.createGain();
+
+    audio.master.gain.value=0;
+
+    const filter=
+      audio.ctx.createBiquadFilter();
+
+    filter.type="lowpass";
+    filter.frequency.value=1450;
+    filter.Q.value=.45;
+
+    audio.master.connect(filter);
+    filter.connect(
+      audio.ctx.destination
+    );
+
+    audio.enabled=true;
+    audio.master.gain.setTargetAtTime(
+      audio.gain,
+      audio.ctx.currentTime,
+      .08
+    );
+
+    scheduleAmbient();
+    return true;
+  }catch(err){
+    audio.ctx=null;
+    audio.master=null;
+    return false;
+  }
+}
+
+function scheduleAmbient(){
+  if(!audio.ctx||audio.timer){
+    return;
+  }
+
+  audio.timer=setInterval(()=>{
+    if(
+      !audio.ctx||
+      !audio.enabled||
+      audio.ctx.state==="closed"
+    ){
+      return;
+    }
+
+    const f=
+      audio.notes[
+        audio.index%audio.notes.length
+      ];
+
+    audio.index++;
+
+    const osc=
+      audio.ctx.createOscillator();
+
+    const gain=
+      audio.ctx.createGain();
+
+    osc.type="square";
+    osc.frequency.setValueAtTime(
+      f,
+      audio.ctx.currentTime
+    );
+
+    gain.gain.setValueAtTime(
+      .0001,
+      audio.ctx.currentTime
+    );
+
+    gain.gain.exponentialRampToValueAtTime(
+      .020,
+      audio.ctx.currentTime+.018
+    );
+
+    gain.gain.exponentialRampToValueAtTime(
+      .0001,
+      audio.ctx.currentTime+.22
+    );
+
+    osc.connect(gain);
+    gain.connect(audio.master);
+
+    osc.start();
+    osc.stop(
+      audio.ctx.currentTime+.24
+    );
+  },320);
+}
+
+function toggleAudio(){
+  if(!ensureAudio()){
+    toast("Browser tidak mendukung Web Audio");
+    return;
+  }
+
+  audio.enabled=!audio.enabled;
+
+  if(audio.enabled){
+    audio.master.gain.setTargetAtTime(
+      audio.gain,
+      audio.ctx.currentTime,
+      .05
+    );
+    scheduleAmbient();
+
+    el.soundBtn.textContent=
+      "BACKSOUND: ON";
+
+    el.soundBtn.classList.add("on");
+  }else{
+    audio.master.gain.setTargetAtTime(
+      .0001,
+      audio.ctx.currentTime,
+      .05
+    );
+
+    el.soundBtn.textContent=
+      "BACKSOUND: OFF";
+
+    el.soundBtn.classList.remove("on");
+  }
+}
+
+function soundClick(kind="soft"){
+  if(!audio.ctx||!audio.enabled){
+    return;
+  }
+
+  const now=
+    audio.ctx.currentTime;
+
+  const osc=
+    audio.ctx.createOscillator();
+
+  const gain=
+    audio.ctx.createGain();
+
+  const freq=
+    kind==="step"
+      ?660
+      :kind==="select"
+        ?520
+        :380;
+
+  osc.type="square";
+
+  osc.frequency.setValueAtTime(
+    freq,
+    now
+  );
+
+  osc.frequency.exponentialRampToValueAtTime(
+    freq*.72,
+    now+.06
+  );
+
+  gain.gain.setValueAtTime(
+    .0001,
+    now
+  );
+
+  gain.gain.exponentialRampToValueAtTime(
+    .045,
+    now+.008
+  );
+
+  gain.gain.exponentialRampToValueAtTime(
+    .0001,
+    now+.075
+  );
+
+  osc.connect(gain);
+  gain.connect(audio.master);
+
+  osc.start(now);
+  osc.stop(now+.09);
+}
+
+function stopAudio(){
+  if(audio.timer){
+    clearInterval(
+      audio.timer
+    );
+    audio.timer=null;
+  }
+
+  if(audio.ctx){
+    audio.ctx.close().catch(()=>{});
+  }
+
+  audio.ctx=null;
+  audio.master=null;
+  audio.enabled=false;
+}
+
+/* ============================================================
+   055 — PARTICLES
+   ============================================================ */
+const particles=[];
+
+/* ============================================================
+   056 — HIT TARGETS
+   ============================================================ */
+const hits=[];
+
+/* ============================================================
+   057 — POINTER STATE
+   ============================================================ */
+const pointer={
+  down:false,
+  moved:false,
+  startX:0,
+  startY:0,
+  lastX:0,
+  lastY:0,
+  id:null
+};
+
+/* ============================================================
+   058 — TOUCH STATE
+   ============================================================ */
+const touchMap=new Map();
+let pinchDistance=0;
+
+/* ============================================================
+   059 — TOAST STATE
+   ============================================================ */
+let toastTimer=0;
+
+/* ============================================================
+   060 — SHOW TOAST
+   ============================================================ */
+function toast(text){
+  el.toast.textContent=text;
+  el.toast.classList.add("show");
+
+  clearTimeout(toastTimer);
+
+  toastTimer=setTimeout(()=>{
+    el.toast.classList.remove("show");
+  },1000);
+}
+
+/* ============================================================
+   061 — SET SELECTION UI
+   ============================================================ */
+function updateSelectionUI(){
+  if(!model.selected){
+    el.selectedTitle.textContent="Tidak ada";
+    el.selectedBody.textContent="Klik objek 3D untuk melakukan inspection.";
+
+    const lesson=document.getElementById("lessonTitle");
+    const tag=document.getElementById("lessonTag");
+    const p1=document.getElementById("lessonP1");
+    const p2=document.getElementById("lessonP2");
+    const tip=document.getElementById("lessonTip");
+
+    if(lesson){
+      lesson.textContent="Arsitektur Processor";
+      tag.textContent="OVERVIEW";
+      p1.textContent="Processor dapat dipahami sebagai sistem yang menerima instruksi, mengatur data, dan mengubah keadaan internalnya. Pada lab ini pembahasan sengaja dipusatkan pada processor dan RAM agar hubungan memori utama dengan unit pemrosesan dapat diamati tanpa distraksi hardware lain.";
+      p2.textContent="Ketika CPU dibongkar, layer fisik digunakan sebagai jembatan menuju konsep arsitektur komputer. Silicon die menjadi titik masuk untuk melihat resource pemrosesan yang bekerja di balik package.";
+      tip.innerHTML="<b>Perhatikan:</b> hubungan spatial antar objek adalah bagian dari materi. Letak RAM di samping CPU membantu menghubungkan konsep memori utama dengan jalur data.";
+    }
+    return;
+  }
+
+  const d=info[model.selected];
+
+  if(d){
+    el.selectedTitle.textContent=d.title;
+    el.selectedBody.textContent=d.body;
+  }else{
+    el.selectedTitle.textContent=model.selected;
+    el.selectedBody.textContent="Komponen visual pada simulator.";
+  }
+
+  const lesson=longLesson[model.selected];
+  if(lesson){
+    const title=document.getElementById("lessonTitle");
+    const tag=document.getElementById("lessonTag");
+    const p1=document.getElementById("lessonP1");
+    const p2=document.getElementById("lessonP2");
+    const tip=document.getElementById("lessonTip");
+    const flow=document.getElementById("lessonFlow");
+
+    if(title)title.textContent=(info[model.selected]&&info[model.selected].title)||lesson.tag;
+    if(tag)tag.textContent=lesson.tag||"MATERIAL";
+    if(p1)p1.textContent=lesson.p1;
+    if(p2)p2.textContent=lesson.p2;
+    if(tip)tip.innerHTML="<b>Catatan:</b> "+lesson.tip;
+
+    if(flow){
+      flow.innerHTML="";
+      const row=document.createElement("div");
+      row.className="edu-flow-row";
+
+      lesson.flow.slice(0,5).forEach((node,i)=>{
+        if(i>0){
+          const arrow=document.createElement("span");
+          arrow.className="edu-flow-arrow";
+          arrow.textContent="→";
+          row.appendChild(arrow);
+        }
+
+        const n=document.createElement("span");
+        n.className="edu-flow-node";
+        n.textContent=node;
+        row.appendChild(n);
+      });
+
+      flow.appendChild(row);
+    }
+  }
+}
+
+/* ============================================================
+   062 — MODEL UI
+   ============================================================ */
+function updateModelUI(){
+  const open=model.cpuExplodedTarget>.5;
+
+  el.modelState.textContent=open
+    ?"Terbuka"
+    :"Utuh";
+
+  el.explodeBtn.textContent=open
+    ?"TUTUP CPU"
+    :"BONGKAR CPU";
+}
+
+/* ============================================================
+   063 — INSTRUCTION UI
+   ============================================================ */
+function updateInstructionUI(){
+  const s=sim.step?steps[sim.step-1]:null;
+
+  el.stepCount.textContent=`${sim.step} / 6`;
+
+  if(!s){
+    el.stepName.textContent="IDLE";
+    el.stepDescription.textContent="Jalankan contoh konseptual LOAD untuk melihat perpindahan instruksi dan data.";
+    el.progressFill.style.width="0%";
+    el.routeText.textContent="RAM → CACHE → REGISTER → CONTROL → REGISTER → OUTPUT";
+  }else{
+    el.stepName.textContent=s.name;
+    el.stepDescription.textContent=s.description;
+    el.progressFill.style.width=`${sim.step/6*100}%`;
+    el.routeText.textContent=s.route;
+  }
+
+  el.dataValue.textContent=sim.step>=5?"42":"?";
+  el.ax.textContent=sim.step>=6?"42":"?";
+  el.pc.textContent=sim.step>=6?"0002":"0001";
+
+  el.headerStatus.textContent=
+    sim.mode==="auto" ? "AUTO RUN" :
+    sim.mode==="manual" ? "MANUAL INSTRUCTION" :
+    "LAB READY";
+
+  el.instructionState.textContent=
+    sim.mode==="auto" ? "Automatic" :
+    sim.mode==="manual" ? "Manual" :
+    "Idle";
+
+  el.modeBadge.textContent=
+    sim.mode==="auto" ? "Automatic" :
+    sim.mode==="manual" ? "Manual" :
+    "Idle";
+
+  el.modeBadge.className=
+    sim.mode==="idle"
+      ? "badge green"
+      : "badge blue";
+
+  el.manualBtn.classList.toggle(
+    "selected",
+    sim.mode==="manual"
+  );
+
+  el.autoBtn.classList.toggle(
+    "selected",
+    sim.mode==="auto"
+  );
+
+  /* Long-form step lesson. */
+  const title=document.getElementById("lessonTitle");
+  const tag=document.getElementById("lessonTag");
+  const p1=document.getElementById("lessonP1");
+  const p2=document.getElementById("lessonP2");
+  const tip=document.getElementById("lessonTip");
+  const flow=document.getElementById("lessonFlow");
+
+  if(title&&tag&&p1&&p2&&tip&&flow){
+    if(!s){
+      title.textContent="Arsitektur Processor";
+      tag.textContent="OVERVIEW";
+      p1.textContent="Processor dapat dipahami sebagai sistem yang menerima instruksi, mengatur data, dan mengubah keadaan internalnya. Pada lab ini pembahasan sengaja dipusatkan pada processor dan RAM agar hubungan memori utama dengan unit pemrosesan dapat diamati tanpa distraksi hardware lain.";
+      p2.textContent="Gunakan mode manual untuk melihat hubungan sebab-akibat setiap tahap. Setelah alurnya dipahami, mode otomatis akan memperlihatkan keseluruhan rangkaian secara kontinu.";
+      tip.innerHTML="<b>Perhatikan:</b> setiap step mengubah dua hal sekaligus: fokus visual pada scene dan state pada panel register/instruksi.";
+      flow.innerHTML='<div class="edu-flow-row"><span class="edu-flow-node">RAM</span><span class="edu-flow-arrow">→</span><span class="edu-flow-node">CACHE</span><span class="edu-flow-arrow">→</span><span class="edu-flow-node">REGISTER</span></div><div class="edu-flow-row"><span class="edu-flow-node">DECODE</span><span class="edu-flow-arrow">→</span><span class="edu-flow-node">CONTROL</span><span class="edu-flow-arrow">→</span><span class="edu-flow-node">OUTPUT</span></div>';
+    }else{
+      title.textContent=s.name;
+      tag.textContent=`STEP ${sim.step}`;
+      p1.textContent=
+        s.name==="FETCH"
+          ?"Pada FETCH, processor membutuhkan instruction stream. Visualisasi menunjukkan packet LOAD berasal dari RAM dan bergerak menuju wilayah CPU yang pada model ini diwakili cache."
+          :s.name==="CACHE"
+          ?"Pada tahap CACHE, instruksi/data ditunjukkan melewati memory layer yang lebih dekat dengan execution resources. Tujuan pedagogisnya adalah memperlihatkan mengapa cache menjadi bagian penting dari memory hierarchy."
+          :s.name==="REGISTER"
+          ?"Pada tahap REGISTER, informasi sementara masuk ke register. Register berada sangat dekat dengan execution path dan direpresentasikan sebagai storage cepat di dalam CPU."
+          :s.name==="DECODE"
+          ?"Pada DECODE, Control Unit menjadi pusat perhatian. Instruksi LOAD dibaca dan diterjemahkan menjadi kontrol yang menentukan tindakan berikutnya."
+          :s.name==="ACCESS"
+          ?"Pada ACCESS, visualisasi mengambil nilai DATA = 42 dari jalur memori/cache dan mengarahkannya ke register. Perubahan nilai belum menjadi output akhir sampai tahap write."
+          :"Pada WRITE / OUTPUT, nilai 42 mencapai register. Panel AX berubah dari '?' menjadi '42' untuk menandai perubahan state internal sebagai hasil rangkaian langkah sebelumnya.";
+
+      p2.textContent=
+        s.name==="FETCH"
+          ?"Perhatikan RAM yang menjadi sumber packet dan garis data yang mengarahkan perhatian pengguna ke CPU. Step ini memperkenalkan gagasan bahwa instruksi harus diambil sebelum dapat diproses."
+          :s.name==="CACHE"
+          ?"Perhatikan highlight cache. Model sengaja memperlakukan cache sebagai titik antara RAM dan resource CPU untuk memperkuat konsep locality dan memory hierarchy secara sederhana."
+          :s.name==="REGISTER"
+          ?"Perhatikan titik akhir packet. Setelah informasi berada di register, processor memiliki state sementara yang dapat digunakan pada tahap berikutnya."
+          :s.name==="DECODE"
+          ?"Perhatikan Control Unit, bukan ALU. Ini menegaskan perbedaan antara resource yang mengendalikan alur instruksi dan resource yang melakukan operasi execution."
+          :s.name==="ACCESS"
+          ?"Nilai 42 mulai muncul pada state simulasi. Perubahan ini menggambarkan bahwa processor memperoleh data yang diminta instruksi LOAD sebelum menuliskannya ke register."
+          :"Pada tahap terakhir, visualisasi menghubungkan data packet, register AX, dan label OUTPUT. Ini memberi titik akhir yang mudah dikenali dari seluruh demonstrasi.";
+
+      tip.innerHTML=
+        "<b>Yang harus diamati:</b> "+s.route+". Jangan hanya membaca panel; ikuti particle packet yang bergerak pada canvas.";
+
+      flow.innerHTML=
+        `<div class="edu-flow-row">
+          <span class="edu-flow-node">${s.source.toUpperCase()}</span>
+          <span class="edu-flow-arrow">→</span>
+          <span class="edu-flow-node">${s.target.toUpperCase()}</span>
+          <span class="edu-flow-arrow">→</span>
+          <span class="edu-flow-node">${s.packet}</span>
+        </div>`;
+    }
+  }
+}
+
+/* ============================================================
+   064 — — CPU LAYER POSITION
+   ============================================================ */
+function cpuLayerPos(layer){
+  return V(
+    0,
+    layer.y+
+      layer.offset*model.cpuExploded,
+    0
+  );
+}
+
+/* ============================================================
+   065 — DRAW HEAT SPREADER DETAILS
+   ============================================================ */
+function drawHeatSpreaderDetails(center,size){
+  const top=center.y+size.y*.5+.012;
+
+  ctx.save();
+
+  if(clipTop(center,size)){
+    for(let i=-8;i<=8;i++){
+      const a=project(V(-2.20,top,i*.26));
+      const b=project(V(2.20,top,i*.26));
+
+      if(a&&b){
+        drawLine(
+          a,b,
+          "rgba(91,101,110,.18)",
+          .65
+        );
+      }
+    }
+
+    for(let i=-5;i<=5;i++){
+      const a=project(V(i*.43,top,-1.84));
+      const b=project(V(i*.43,top,1.84));
+
+      if(a&&b){
+        drawLine(
+          a,b,
+          "rgba(91,101,110,.15)",
+          .55
+        );
+      }
+    }
+
+    const emblem=project(
+      V(0,top+.003,0)
+    );
+
+    if(emblem){
+      ctx.fillStyle="rgba(92,103,112,.24)";
+      ctx.strokeStyle="rgba(92,103,112,.18)";
+      ctx.lineWidth=.8;
+
+      ctx.beginPath();
+      ctx.arc(
+        emblem.x,
+        emblem.y,
+        16*dpr,
+        0,
+        Math.PI*2
+      );
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle="rgba(255,255,255,.72)";
+      ctx.font=`700 ${7*dpr}px Arial`;
+      ctx.textAlign="center";
+      ctx.textBaseline="middle";
+      ctx.fillText(
+        "CPU",
+        emblem.x,
+        emblem.y
+      );
+    }
+  }
+
+  ctx.restore();
+}
+
+/* ============================================================
+   066 — DRAW CONTACT ARRAY
+   ============================================================ */
+function drawContactArray(center,size){
+  const top=center.y+size.y*.5+.012;
+
+  const rows=7;
+  const cols=10;
+
+  const stride=detailStride();
+
+  for(let r=0;r<rows;r+=stride){
+    for(let c=0;c<cols;c+=stride){
+      const x=-2.04+c*.45;
+      const z=-1.55+r*.52;
+
+      const a=project(
+        V(
+          x-.07,
+          top,
+          z-.035
+        )
+      );
+
+      const b=project(
+        V(
+          x+.07,
+          top,
+          z-.035
+        )
+      );
+
+      const c1=project(
+        V(
+          x+.07,
+          top,
+          z+.035
+        )
+      );
+
+      const d=project(
+        V(
+          x-.07,
+          top,
+          z+.035
+        )
+      );
+
+      if(!a||!b||!c1||!d){
+        continue;
+      }
+
+      fillPoly(
+        [a,b,c1,d],
+        colorCss(
+          (r+c)%4===0
+            ?C.goldBright
+            :C.gold
+        ),
+        "rgba(79,61,26,.36)",
+        .45
+      );
+    }
+  }
+}
+
+/* ============================================================
+   067 — DRAW SUBSTRATE ROUTING
+   ============================================================ */
+function drawSubstrateRouting(center,size){
+  const top=center.y+size.y*.5+.012;
+
+  const horizontal=[
+    -.95,
+    -.45,
+    0,
+    .45,
+    .95
+  ];
+
+  for(const z of horizontal){
+    const a=project(
+      V(-2.15,top,z)
+    );
+
+    const b=project(
+      V(2.15,top,z)
+    );
+
+    if(a&&b){
+      drawLine(
+        a,b,
+        "rgba(104,116,126,.28)",
+        .7
+      );
+    }
+  }
+
+  const vertical=[
+    -1.30,
+    -.65,
+    .65,
+    1.30
+  ];
+
+  for(const x of vertical){
+    const a=project(
+      V(x,top,-1.75)
+    );
+
+    const b=project(
+      V(x,top,1.75)
+    );
+
+    if(a&&b){
+      drawLine(
+        a,b,
+        "rgba(104,116,126,.24)",
+        .65
+      );
+    }
+  }
+
+  const viaPts=[
+    [-1.84,-1.42],
+    [1.84,-1.42],
+    [-1.84,1.42],
+    [1.84,1.42],
+    [-1.10,0],
+    [1.10,0]
+  ];
+
+  for(const [x,z] of viaPts){
+    const p=project(
+      V(x,top+.01,z)
+    );
+
+    if(!p){
+      continue;
+    }
+
+    ctx.save();
+    ctx.fillStyle="rgba(195,207,216,.58)";
+    ctx.beginPath();
+    ctx.arc(
+      p.x,
+      p.y,
+      2.1*dpr,
+      0,
+      Math.PI*2
+    );
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+/* ============================================================
+   068 — DIE MICRO TRACE
+   ============================================================ */
+function drawDieCircuitry(center,size){
+  const top=center.y+size.y*.5+.012;
+
+  ctx.save();
+
+  if(!clipTop(center,size)){
+    ctx.restore();
+    return;
+  }
+
+  const paths=[
+    [V(-1.74,top,-1.26),V(-.96,top,-.96),V(-.22,top,-.55),V(0,top,-.15)],
+    [V(1.74,top,-1.22),V(1.02,top,-.94),V(.28,top,-.55),V(0,top,-.15)],
+    [V(-1.73,top,1.25),V(-1.02,top,.93),V(-.28,top,.52),V(0,top,.15)],
+    [V(1.73,top,1.23),V(1.02,top,.92),V(.28,top,.52),V(0,top,.15)],
+    [V(-1.62,top,0),V(-1.06,top,0),V(-.44,top,0),V(0,top,0),V(.44,top,0),V(1.06,top,0),V(1.62,top,0)],
+    [V(0,top,-1.52),V(0,top,-1.04),V(0,top,-.44),V(0,top,0),V(0,top,.44),V(0,top,1.04),V(0,top,1.52)]
+  ];
+
+  for(const path of paths){
+    for(let i=0;i<path.length-1;i++){
+      const a=project(path[i]);
+      const b=project(path[i+1]);
+
+      if(a&&b){
+        drawLine(
+          a,b,
+          "rgba(180,198,213,.30)",
+          .9
+        );
+      }
+    }
+  }
+
+  const nodes=[
+    [-1.43,-1.03],
+    [-.71,-.71],
+    [1.43,-1.03],
+    [.71,-.71],
+    [-1.43,1.03],
+    [-.71,.71],
+    [1.43,1.03],
+    [.71,.71],
+    [0,0],
+    [0,-.58],
+    [0,.58],
+    [-.54,0],
+    [.54,0]
+  ];
+
+  for(const [x,z] of nodes){
+    const p=project(
+      V(x,top+.02,z)
+    );
+
+    if(!p){
+      continue;
+    }
+
+    ctx.save();
+    ctx.fillStyle="rgba(202,220,233,.68)";
+    ctx.beginPath();
+    ctx.arc(
+      p.x,
+      p.y,
+      2*dpr,
+      0,
+      Math.PI*2
+    );
+    ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+/* ============================================================
+   069 — DRAW CORE INTERNAL DETAIL
+   ============================================================ */
+function drawCoreDetail(o){
+  const center=internalPos(o);
+  const top=center.y+o.size.y*.5+.012;
+
+  ctx.save();
+
+  if(!clipTop(center,o.size)){
+    ctx.restore();
+    return;
+  }
+
+  for(let i=-2;i<=2;i++){
+    const a=project(
+      V(
+        o.pos.x-o.size.x*.35,
+        top,
+        o.pos.z+i*.105
+      )
+    );
+
+    const b=project(
+      V(
+        o.pos.x+o.size.x*.35,
+        top,
+        o.pos.z+i*.105
+      )
+    );
+
+    if(a&&b){
+      drawLine(
+        a,b,
+        "rgba(210,224,237,.38)",
+        .55
+      );
+    }
+  }
+
+  const centerScreen=project(
+    V(o.pos.x,top+.01,o.pos.z)
+  );
+
+  if(centerScreen){
+    ctx.save();
+    ctx.strokeStyle="rgba(215,231,241,.55)";
+    ctx.lineWidth=.75*dpr;
+    ctx.strokeRect(
+      centerScreen.x-6*dpr,
+      centerScreen.y-6*dpr,
+      12*dpr,
+      12*dpr
+    );
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+/* ============================================================
+   070 — CACHE DETAIL
+   ============================================================ */
+function drawCacheDetail(o){
+  const center=internalPos(o);
+  const top=center.y+o.size.y*.5+.012;
+
+  ctx.save();
+
+  if(!clipTop(center,o.size)){
+    ctx.restore();
+    return;
+  }
+
+  for(let i=-6;i<=6;i++){
+    const a=project(
+      V(
+        -.30,
+        top,
+        o.pos.z+i*.15
+      )
+    );
+
+    const b=project(
+      V(
+        .30,
+        top,
+        o.pos.z+i*.15
+      )
+    );
+
+    if(a&&b){
+      drawLine(
+        a,b,
+        "rgba(241,220,181,.48)",
+        .55
+      );
+    }
+  }
+
+  ctx.restore();
+}
+
+/* ============================================================
+   071 — ALU DETAIL
+   ============================================================ */
+function drawAluDetail(o){
+  const center=internalPos(o);
+  const top=center.y+o.size.y*.5+.012;
+
+  const a=project(
+    V(center.x-.22,top,center.z-.19)
+  );
+
+  const b=project(
+    V(center.x+.22,top,center.z+.19)
+  );
+
+  const c1=project(
+    V(center.x-.22,top,center.z+.19)
+  );
+
+  const d=project(
+    V(center.x+.22,top,center.z-.19)
+  );
+
+  if(a&&b){
+    drawLine(
+      a,b,
+      "rgba(255,241,207,.60)",
+      .8
+    );
+  }
+
+  if(c1&&d){
+    drawLine(
+      c1,d,
+      "rgba(255,241,207,.60)",
+      .8
+    );
+  }
+}
+
+/* ============================================================
+   072 — CONTROL DETAIL
+   ============================================================ */
+function drawControlDetail(o){
+  const center=internalPos(o);
+  const top=center.y+o.size.y*.5+.012;
+
+  for(let i=-2;i<=2;i++){
+    const a=project(
+      V(
+        center.x+i*.11,
+        top,
+        center.z-.22
+      )
+    );
+
+    const b=project(
+      V(
+        center.x+i*.11,
+        top,
+        center.z+.22
+      )
+    );
+
+    if(a&&b){
+      drawLine(
+        a,b,
+        "rgba(215,230,243,.44)",
+        .55
+      );
+    }
+  }
+}
+
+/* ============================================================
+   073 — REGISTER DETAIL
+   ============================================================ */
+function drawRegisterDetail(o){
+  const center=internalPos(o);
+  const top=center.y+o.size.y*.5+.012;
+
+  const p=project(
+    V(center.x,top,center.z)
+  );
+
+  if(!p){
+    return;
+  }
+
+  ctx.save();
+  ctx.strokeStyle="rgba(217,239,229,.75)";
+  ctx.lineWidth=.85*dpr;
+  ctx.strokeRect(
+    p.x-7*dpr,
+    p.y-7*dpr,
+    14*dpr,
+    14*dpr
+  );
+  ctx.restore();
+}
+
+/* ============================================================
+   074 — INTERNAL POSITION
+   ============================================================ */
+function internalPos(o){
+  return V(
+    o.pos.x,
+    o.pos.y+model.cpuExploded*.76,
+    o.pos.z
+  );
+}
+
+/* ============================================================
+   075 — DRAW INTERNAL BLOCK
+   ============================================================ */
+function drawInternal(o){
+  const center=internalPos(o);
+  const selected=model.selected===o.name;
+  const active=(
+    sim.step===3 && o.type==="register"
+  )||(
+    sim.step===4 && o.type==="control"
+  );
+
+  const boost=
+    selected
+      ?.10
+      :active
+        ?.075
+        :.018;
+
+  drawBevelBox(
+    center,
+    o.size,
+    o.color,
+    0,
+    .06,
+    {
+      boost,
+      stroke:selected
+        ?"rgba(50,106,168,.95)"
+        :"rgba(30,42,51,.40)",
+      lineWidth:selected?1.75:.75
+    }
+  );
+
+  if(o.type==="core"){
+    drawCoreDetail(o);
+  }
+
+  if(o.type==="cache"){
+    drawCacheDetail(o);
+  }
+
+  if(o.type==="alu"){
+    drawAluDetail(o);
+  }
+
+  if(o.type==="control"){
+    drawControlDetail(o);
+  }
+
+  if(o.type==="register"){
+    drawRegisterDetail(o);
+  }
+}
+
+/* ============================================================
+   076 — INTERNAL LABELS
+   ============================================================ */
+function drawInternalLabels(){
+  for(const o of dieBlocks){
+    const center=internalPos(o);
+    const p=project(
+      V(
+        center.x,
+        center.y+.14,
+        center.z
+      )
+    );
+
+    if(!p){
+      continue;
+    }
+
+    const selected=model.selected===o.name;
+
+    screenLabel(
+      o.name,
+      p.x,
+      p.y-(selected?12*dpr:0),
+      {
+        size:selected?10:8.5,
+        weight:750,
+        color:selected?"#294d73":"#5c6b77",
+        bg:selected?"rgba(244,248,252,.97)":"rgba(255,255,255,.90)",
+        border:selected?"rgba(112,147,178,.78)":"rgba(167,179,190,.56)",
+        height:selected?20:18
+      }
+    );
+  }
+}
+
+/* ============================================================
+   077 — DRAW RAM BOARD
+   ============================================================ */
+function drawRamBoard(){
+  const a=ramWorld(V(0,.02,0));
+
+  drawBevelBox(
+    a,
+    ramModel.board,
+    C.ramBoard,
+    ramModel.rotation,
+    .08,
+    {
+      stroke:model.selected==="RAM"
+        ?"rgba(50,106,168,.95)"
+        :"rgba(23,42,34,.42)",
+      lineWidth:model.selected==="RAM"?1.8:.8,
+      boost:model.selected==="RAM"?.08:0
+    }
+  );
+}
+
+/* ============================================================
+   078 — RAM WORLD TRANSFORM
+   ============================================================ */
+function rotateYPoint(local,rotation){
+  const c=Math.cos(rotation);
+  const s=Math.sin(rotation);
+
+  return V(
+    local.x*c-local.z*s,
+    local.y,
+    local.x*s+local.z*c
+  );
+}
+
+/* ============================================================
+   079 — RAM WORLD
+   ============================================================ */
+function ramWorld(local){
+  return vAdd(
+    ramModel.origin,
+    rotateYPoint(
+      V(
+        local.x,
+        local.y+(1-model.ramAlpha)*.75,
+        local.z
+      ),
+      ramModel.rotation
+    )
+  );
+}
+
+/* ============================================================
+   080 — RAM SPREADER
+   ============================================================ */
+function drawRamSpreader(){
+  drawBevelBox(
+    ramWorld(V(0,.115,0)),
+    ramModel.spreader,
+    [63,91,82],
+    ramModel.rotation,
+    .06,
+    {
+      stroke:"rgba(27,45,39,.36)",
+      lineWidth:.7,
+      boost:.02
+    }
+  );
+}
+
+/* ============================================================
+   081 — RAM EDGE
+   ============================================================ */
+function drawRamEdge(){
+  drawBox(
+    ramWorld(V(0,-.08,0)),
+    ramModel.edge,
+    C.ramEdge,
+    ramModel.rotation,
+    {
+      stroke:"rgba(17,29,27,.46)",
+      lineWidth:.75
+    }
+  );
+}
+
+/* ============================================================
+   082 — RAM MEMORY CHIPS
+   ============================================================ */
+function drawRamChips(){
+  for(let i=0;i<ramChips.length;i++){
+    const z=ramChips[i];
+
+    drawBevelBox(
+      ramWorld(V(0,.24,z)),
+      V(.74,.16,.32),
+      C.ramChip,
+      ramModel.rotation,
+      .035,
+      {
+        stroke:"rgba(15,22,25,.50)",
+        lineWidth:.65
+      }
+    );
+
+    drawRamChipMark(
+      ramWorld(V(0,.335,z))
+    );
+  }
+}
+
+/* ============================================================
+   083 — RAM CHIP MARK
+   ============================================================ */
+function drawRamChipMark(world){
+  const p=project(world);
+
+  if(!p){
+    return;
+  }
+
+  ctx.save();
+  ctx.strokeStyle="rgba(195,202,207,.28)";
+  ctx.lineWidth=.5*dpr;
+
+  ctx.beginPath();
+  ctx.moveTo(
+    p.x-8*dpr,
+    p.y
+  );
+  ctx.lineTo(
+    p.x+8*dpr,
+    p.y
+  );
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+/* ============================================================
+   084 — RAM GOLD CONTACTS
+   ============================================================ */
+function drawRamContacts(){
+  for(let i=0;i<(isCompactViewport()?18:27);i++){
+    const z=-2.24+i*.174;
+
+    const p=ramWorld(
+      V(0,-.125,z)
+    );
+
+    drawBevelBox(
+      p,
+      V(.70,.032,.052),
+      i%3===0?C.goldBright:C.gold,
+      ramModel.rotation,
+      .01,
+      {
+        stroke:"rgba(79,61,27,.34)",
+        lineWidth:.45
+      }
+    );
+  }
+}
+
+/* ============================================================
+   085 — RAM NOTCH
+   ============================================================ */
+function drawRamNotch(){
+  const center=ramWorld(
+    V(
+      0,
+      -.142,
+      .46
+    )
+  );
+
+  const p1=project(
+    ramWorld(
+      V(
+        -.15,
+        -.17,
+        .33
+      )
+    )
+  );
+
+  const p2=project(
+    ramWorld(
+      V(
+        .15,
+        -.17,
+        .33
+      )
+    )
+  );
+
+  const p3=project(
+    ramWorld(
+      V(
+        .15,
+        -.17,
+        .62
+      )
+    )
+  );
+
+  const p4=project(
+    ramWorld(
+      V(
+        -.15,
+        -.17,
+        .62
+      )
+    )
+  );
+
+  if(!p1||!p2||!p3||!p4){
+    return;
+  }
+
+  fillPoly(
+    [p1,p2,p3,p4],
+    "rgba(224,228,231,.98)",
+    "rgba(170,180,188,.75)",
+    .55
+  );
+}
+
+/* ============================================================
+   086 — RAM LABEL
+   ============================================================ */
+function drawRamLabel(){
+  const p=project(
+    ramWorld(
+      V(
+        0,
+        .39,
+        .05
+      )
+    )
+  );
+
+  if(!p){
+    return;
+  }
+
+  ctx.save();
+
+  ctx.fillStyle=`rgba(238,241,242,${model.ramAlpha})`;
+  ctx.textAlign="center";
+  ctx.textBaseline="middle";
+  ctx.font=`800 ${10*dpr}px Arial`;
+  ctx.fillText(
+    "RAM · DDR",
+    p.x,
+    p.y
+  );
+
+  ctx.fillStyle=`rgba(210,216,218,${model.ramAlpha})`;
+  ctx.font=`600 ${7*dpr}px Arial`;
+  ctx.fillText(
+    "MEMORY MODULE",
+    p.x,
+    p.y+12*dpr
+  );
+
+  ctx.restore();
+}
+
+/* ============================================================
+   087 — RAM COMPLETE
+   ============================================================ */
+function drawRam(){
+  if(model.ramAlpha<=.01){
+    return;
+  }
+
+  shadowEllipse(
+    V(4.0,-1.26,-.2),
+    1.15,
+    .34,
+    .07*model.ramAlpha
+  );
+
+  drawRamBoard();
+  drawRamEdge();
+  drawRamChips();
+  drawRamSpreader();
+  drawRamContacts();
+  drawRamNotch();
+  drawRamLabel();
+}
+
+/* ============================================================
+   088 — RAM PATH ANCHOR
+   ============================================================ */
+function anchorRam(){
+  return ramWorld(
+    V(
+      0,
+      .48,
+      -.25
+    )
+  );
+}
+
+/* ============================================================
+   089 — INTERNAL PATH ANCHOR
+   ============================================================ */
+function anchorInternal(name){
+  const o=dieBlocks.find(
+    item=>item.name===name
+  );
+
+  if(!o){
+    return V(0,.5,0);
+  }
+
+  return internalPos(o);
+}
+
+/* ============================================================
+   090 — PATH ANCHOR
+   ============================================================ */
+function pathAnchor(id){
+  if(id==="ram"){
+    return anchorRam();
+  }
+
+  if(id==="cache"){
+    return anchorInternal("CACHE");
+  }
+
+  if(id==="register"){
+    return anchorInternal("REGISTER");
+  }
+
+  if(id==="control"){
+    return anchorInternal("CONTROL UNIT");
+  }
+
+  if(id==="output"){
+    return V(
+      .15,
+      .58+model.cpuExploded*.76,
+      1.78
+    );
+  }
+
+  return V(0,.5,0);
+}
+
+/* ============================================================
+   091 — PATH CURVE
+   ============================================================ */
+function quadraticPoint(a,c,b,t){
+  const u=1-t;
+
+  return V(
+    u*u*a.x+
+      2*u*t*c.x+
+      t*t*b.x,
+
+    u*u*a.y+
+      2*u*t*c.y+
+      t*t*b.y,
+
+    u*u*a.z+
+      2*u*t*c.z+
+      t*t*b.z
+  );
+}
+
+/* ============================================================
+   092 — PATH CONTROL POINT
+   ============================================================ */
+function pathControl(a,b){
+  const mid=vLerp(a,b,.5);
+
+  return V(
+    mid.x,
+    Math.max(a.y,b.y)+.35+
+      Math.abs(a.x-b.x)*.035,
+    mid.z
+  );
+}
+
+/* ============================================================
+   093 — DRAW DATA PATH
+   ============================================================ */
+function drawDataPath(){
+  if(sim.step<=0){
+    return;
+  }
+
+  const s=steps[sim.step-1];
+
+  const a=pathAnchor(s.source);
+  const b=pathAnchor(s.target);
+  const c=pathControl(a,b);
+
+  let prev=null;
+
+  for(let i=0;i<=28;i++){
+    const t=i/28;
+    const p=project(
+      quadraticPoint(a,c,b,t)
+    );
+
+    if(!p){
+      prev=null;
+      continue;
+    }
+
+    if(prev){
+      drawLine(
+        prev,
+        p,
+        "rgba(57,109,168,.42)",
+        1.8*dpr,
+        [6*dpr,6*dpr]
+      );
+    }
+
+    prev=p;
+  }
+
+  const bp=project(b);
+
+  if(bp){
+    const before=project(
+      quadraticPoint(
+        a,
+        c,
+        b,
+        .92
+      )
+    );
+
+    if(before){
+      const angle=Math.atan2(
+        bp.y-before.y,
+        bp.x-before.x
+      );
+
+      const len=9*dpr;
+
+      const p1={
+        x:bp.x-Math.cos(angle-.45)*len,
+        y:bp.y-Math.sin(angle-.45)*len
+      };
+
+      const p2={
+        x:bp.x-Math.cos(angle+.45)*len,
+        y:bp.y-Math.sin(angle+.45)*len
+      };
+
+      fillPoly(
+        [bp,p1,p2],
+        "rgba(57,109,168,.68)"
+      );
+    }
+  }
+}
+
+/* ============================================================
+   094 — SPAWN PARTICLES
+   ============================================================ */
+function spawnParticles(){
+  particles.length=0;
+
+  if(sim.step<=0){
+    return;
+  }
+
+  for(let i=0;i<12;i++){
+    particles.push({
+      t:-i*.075,
+      speed:.58+Math.random()*.20,
+      size:.055+Math.random()*.018,
+      phase:Math.random()*Math.PI*2,
+      label:steps[sim.step-1].packet
+    });
+  }
+}
+
+/* ============================================================
+   095 — UPDATE PARTICLES
+   ============================================================ */
+function updateParticles(dt){
+  if(sim.step<=0){
+    particles.length=0;
+    return;
+  }
+
+  for(const p of particles){
+    p.t+=dt*p.speed;
+    p.phase+=dt*4.7;
+  }
+
+  if(
+    particles.length &&
+    particles.every(p=>p.t>1.08)
+  ){
+    spawnParticles();
+  }
+}
+
+/* ============================================================
+   096 — PARTICLE POSITION
+   ============================================================ */
+function particlePosition(p){
+  const step=steps[sim.step-1];
+
+  const a=pathAnchor(step.source);
+  const b=pathAnchor(step.target);
+  const c=pathControl(a,b);
+
+  const t=easeInOut(
+    clamp(p.t,0,1)
+  );
+
+  const q=quadraticPoint(
+    a,c,b,t
+  );
+
+  q.y+=Math.sin(p.phase)*.03;
+
+  return q;
+}
+
+/* ============================================================
+   097 — DRAW PARTICLES
+   ============================================================ */
+function drawParticles(){
+  if(sim.step<=0){
+    return;
+  }
+
+  for(const p of particles){
+    if(p.t<-.02||p.t>1.08){
+      continue;
+    }
+
+    const q=particlePosition(p);
+    const s=project(q);
+
+    if(!s){
+      continue;
+    }
+
+    const radius=Math.max(
+      2.4*dpr,
+      p.size*s.scale*.75
+    );
+
+    ctx.save();
+
+    ctx.fillStyle="rgba(54,107,168,.93)";
+    ctx.beginPath();
+    ctx.arc(
+      s.x,
+      s.y,
+      radius,
+      0,
+      Math.PI*2
+    );
+    ctx.fill();
+
+    ctx.strokeStyle="rgba(54,107,168,.26)";
+    ctx.lineWidth=.9*dpr;
+    ctx.beginPath();
+    ctx.arc(
+      s.x,
+      s.y,
+      radius+4*dpr,
+      0,
+      Math.PI*2
+    );
+    ctx.stroke();
+
+    ctx.restore();
+
+    if(
+      p.t>.45&&
+      p.t<.55&&
+      p.label
+    ){
+      ctx.save();
+      ctx.font=`700 ${8*dpr}px Arial`;
+      ctx.textAlign="left";
+      ctx.textBaseline="middle";
+      ctx.fillStyle="rgba(49,67,81,.82)";
+      ctx.fillText(
+        p.label,
+        s.x+8*dpr,
+        s.y-7*dpr
+      );
+      ctx.restore();
+    }
+  }
+}
+
+/* ============================================================
+   098 — ACTIVE TARGET RING
+   ============================================================ */
+function drawTargetRing(name){
+  if(!name){
+    return;
+  }
+
+  let anchor=null;
+
+  if(name==="CACHE"){
+    anchor=anchorInternal("CACHE");
+  }
+
+  if(name==="REGISTER"){
+    anchor=anchorInternal("REGISTER");
+  }
+
+  if(name==="CONTROL UNIT"){
+    anchor=anchorInternal("CONTROL UNIT");
+  }
+
+  if(name==="RAM"){
+    anchor=anchorRam();
+  }
+
+  if(!anchor){
+    return;
+  }
+
+  const p=project(
+    vAdd(
+      anchor,
+      V(0,.18,0)
+    )
+  );
+
+  if(!p){
+    return;
+  }
+
+  const pulse=
+    1+
+    Math.sin(performance.now()*.006)*.08;
+
+  const radius=
+    30*dpr*pulse;
+
+  ctx.save();
+
+  ctx.strokeStyle="rgba(55,105,157,.44)";
+  ctx.lineWidth=1.6*dpr;
+
+  ctx.beginPath();
+  ctx.arc(
+    p.x,
+    p.y,
+    radius,
+    0,
+    Math.PI*2
+  );
+
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+/* ============================================================
+   099 — ACTIVE STEP TARGET
+   ============================================================ */
+function activeTarget(){
+  if(sim.step<=0){
+    return null;
+  }
+
+  const s=steps[sim.step-1];
+
+  if(s.target==="cache"){
+    return "CACHE";
+  }
+
+  if(s.target==="register"){
+    return "REGISTER";
+  }
+
+  if(s.target==="control"){
+    return "CONTROL UNIT";
+  }
+
+  return null;
+}
+
+/* ============================================================
+   100 — OUTPUT INDICATOR
+   ============================================================ */
+function drawOutputIndicator(){
+  if(sim.step<6){
+    return;
+  }
+
+  const p=project(
+    V(
+      .15,
+      .77+model.cpuExploded*.76,
+      1.78
+    )
+  );
+
+  if(!p){
+    return;
+  }
+
+  screenLabel(
+    "OUTPUT 42",
+    p.x,
+    p.y,
+    {
+      size:10,
+      weight:800,
+      color:"#3f5971",
+      bg:"rgba(248,250,252,.96)"
+    }
+  );
+}
+
+/* ============================================================
+   101 — SCENE TITLE
+   ============================================================ */
+function drawSceneTitles(){
+  const cpuTitle=project(
+    V(
+      0,
+      1.72+model.cpuExploded*.30,
+      0
+    )
+  );
+
+  if(cpuTitle){
+    screenLabel(
+      model.cpuExploded>.15
+        ?"CPU ANATOMY"
+        :"PROCESSOR",
+      cpuTitle.x,
+      cpuTitle.y,
+      {
+        size:10,
+        weight:800
+      }
+    );
+  }
+
+  if(model.ramAlpha>.05){
+    const ramTitle=project(
+      ramWorld(
+        V(0,.72,.02)
+      )
+    );
+
+    if(ramTitle){
+      screenLabel(
+        "RAM · DDR",
+        ramTitle.x,
+        ramTitle.y,
+        {
+          size:10,
+          weight:800
+        }
+      );
+    }
+  }
+}
+
+/* ============================================================
+   102 — CPU LAYER DRAW
+   ============================================================ */
+function drawCpuLayer(layer){
+  const pos=cpuLayerPos(layer);
+  const selected=model.selected===layer.name;
+
+  drawBevelBox(
+    pos,
+    layer.size,
+    layer.color,
+    0,
+    .10,
+    {
+      boost:selected?.09:0,
+      stroke:selected
+        ?"rgba(49,104,164,.94)"
+        :"rgba(32,43,53,.34)",
+      lineWidth:selected?1.8:.8
+    }
+  );
+
+  if(layer.id==="ihs"){
+    drawHeatSpreaderDetails(
+      pos,
+      layer.size
+    );
+  }
+
+  if(layer.id==="contacts"){
+    drawContactArray(
+      pos,
+      layer.size
+    );
+  }
+
+  if(layer.id==="substrate"){
+    drawSubstrateRouting(
+      pos,
+      layer.size
+    );
+  }
+
+  if(layer.id==="die"){
+    drawDieCircuitry(
+      pos,
+      layer.size
+    );
+  }
+}
+
+/* ============================================================
+   103 — CPU SHADOW
+   ============================================================ */
+function drawCpuShadow(){
+  shadowEllipse(
+    V(
+      0,
+      -1.26,
+      0
+    ),
+    2.25,
+    .55,
+    .12
+  );
+}
+
+/* ============================================================
+   104 — CPU INTERNAL OCCLUSION CONTROL
+   ============================================================ */
+function drawCpuInternals(){
+  if(model.cpuExploded<.16){
+    return;
+  }
+
+  const sorted=dieBlocks
+    .map(o=>{
+      const p=project(
+        internalPos(o)
+      );
+
+      return {
+        o,
+        p
+      };
+    })
+    .filter(v=>v.p)
+    .sort((a,b)=>b.p.z-a.p.z);
+
+  for(const item of sorted){
+    drawInternal(item.o);
+
+    const p=project(
+      internalPos(item.o)
+    );
+
+    if(p){
+      hits.push({
+        name:item.o.name,
+        x:p.x,
+        y:p.y,
+        radius:
+          item.o.type==="cache"
+            ?42*dpr
+            :34*dpr,
+        priority:5
+      });
+    }
+  }
+
+  drawInternalLabels();
+}
+
+/* ============================================================
+   105 — CPU EXTERIOR
+   ============================================================ */
+function drawCpu(){
+  drawCpuShadow();
+
+  const sorted=cpuLayers
+    .map(layer=>{
+      const p=project(
+        cpuLayerPos(layer)
+      );
+
+      return {
+        layer,
+        p
+      };
+    })
+    .filter(v=>v.p)
+    .sort((a,b)=>b.p.z-a.p.z);
+
+  for(const item of sorted){
+    drawCpuLayer(
+      item.layer
+    );
+
+    const p=project(
+      cpuLayerPos(item.layer)
+    );
+
+    if(p){
+      hits.push({
+        name:item.layer.name,
+        x:p.x,
+        y:p.y,
+        radius:
+          item.layer.id==="ihs"
+            ?82*dpr
+            :55*dpr,
+        priority:2
+      });
+    }
+  }
+
+  drawCpuInternals();
+}
+
+/* ============================================================
+   106 — RAM HIT TARGET
+   ============================================================ */
+function registerRamHit(){
+  if(model.ramAlpha<.08){
+    return;
+  }
+
+  const p=project(
+    anchorRam()
+  );
+
+  if(!p){
+    return;
+  }
+
+  hits.push({
+    name:"RAM",
+    x:p.x,
+    y:p.y,
+    radius:100*dpr,
+    priority:3
+  });
+}
+
+/* ============================================================
+   107 — LAYER HIT TARGETS
+   ============================================================ */
+function registerLayerHits(){
+  for(const layer of cpuLayers){
+    const p=project(
+      cpuLayerPos(layer)
+    );
+
+    if(!p){
+      continue;
+    }
+
+    hits.push({
+      name:layer.name,
+      x:p.x,
+      y:p.y,
+      radius:
+        layer.id==="ihs"
+          ?80*dpr
+          :52*dpr,
+      priority:3
+    });
+  }
+}
+
+/* ============================================================
+   108 — MAIN RENDER
+   ============================================================ */
+function render(){
+  resize();
+
+  ctx.setTransform(
+    dpr,0,0,dpr,0,0
+  );
+
+  const logicalW=canvas.width/dpr;
+  const logicalH=canvas.height/dpr;
+
+  ctx.imageSmoothingEnabled=false;
+
+  ctx.fillStyle="#edf1f4";
+  ctx.fillRect(
+    0,
+    0,
+    logicalW,
+    logicalH
+  );
+
+  updateCamera();
+  frameBasis=cameraBasis();
+
+  drawPixelBackdrop();
+
+  ctx.save();
+  drawGround();
+  ctx.restore();
+
+  hits.length=0;
+
+  drawCpu();
+  drawRam();
+
+  registerRamHit();
+
+  drawDataPath();
+  drawParticles();
+
+  const target=activeTarget();
+
+  if(target){
+    drawTargetRing(target);
+  }
+
+  drawOutputIndicator();
+  drawSceneTitles();
+}
+
+/* ============================================================
+   109 — SIM RESET
+   ============================================================ */
+function resetInstruction(){
+  sim.step=0;
+  sim.mode="idle";
+  sim.elapsed=0;
+  sim.cycle=0;
+
+  particles.length=0;
+
+  model.ramAlphaTarget=1;
+
+  updateInstructionUI();
+
+  toast(
+    "Simulasi instruksi di-reset"
+  );
+}
+
+/* ============================================================
+   110 — GLOBAL RESET
+   ============================================================ */
+function resetAll(){
+  resetInstruction();
+
+  model.cpuExploded=0;
+  model.cpuExplodedTarget=0;
+
+  model.ramAlpha=1;
+  model.ramAlphaTarget=1;
+
+  model.selected=null;
+  model.hover=null;
+
+  resetCamera();
+
+  updateSelectionUI();
+  updateModelUI();
+  updateInstructionUI();
+
+  toast(
+    "Lab di-reset"
+  );
+}
+
+/* ============================================================
+   111 — EXPLODE TOGGLE
+   ============================================================ */
+function toggleExplode(){
+  model.cpuExplodedTarget=
+    model.cpuExplodedTarget>.5
+      ?0
+      :1;
+
+  updateModelUI();
+
+  toast(
+    model.cpuExplodedTarget>.5
+      ?"CPU dibongkar"
+      :"CPU ditutup"
+  );
+}
+
+/* ============================================================
+   112 — MANUAL MODE START
+   ============================================================ */
+function startManual(){
+  sim.mode="manual";
+
+  if(sim.step===0){
+    advanceStep(1);
+  }else{
+    updateInstructionUI();
+  }
+
+  toast(
+    "Mode manual aktif"
+  );
+}
+
+/* ============================================================
+   113 — AUTO MODE START
+   ============================================================ */
+function startAuto(){
+  sim.mode="auto";
+  sim.step=0;
+  sim.elapsed=.25;
+  sim.cycle=0;
+
+  particles.length=0;
+
+  model.ramAlphaTarget=0;
+
+  updateInstructionUI();
+
+  toast(
+    "Mode otomatis aktif"
+  );
+}
+
+/* ============================================================
+   114 — STEP FORWARD
+   ============================================================ */
+function nextStep(){
+  if(sim.mode==="auto"){
+    sim.mode="manual";
+  }
+
+  if(sim.step<6){
+    advanceStep(sim.step+1);
+  }
+}
+
+/* ============================================================
+   115 — STEP BACK
+   ============================================================ */
+function previousStep(){
+  if(sim.mode==="auto"){
+    sim.mode="manual";
+  }
+
+  if(sim.step>1){
+    advanceStep(sim.step-1);
+  }else if(sim.step===1){
+    resetInstruction();
+  }
+}
+
+/* ============================================================
+   116 — ADVANCE STEP
+   ============================================================ */
+function advanceStep(n){
+  soundClick("step");
+  sim.mode=
+    sim.mode==="idle"
+      ?"manual"
+      :sim.mode;
+
+  sim.step=clamp(
+    Math.round(n),
+    0,
+    6
+  );
+
+  if(sim.step===0){
+    resetInstruction();
+    return;
+  }
+
+  model.ramAlphaTarget=0;
+
+  spawnParticles();
+
+  updateInstructionUI();
+}
+
+/* ============================================================
+   117 — UPDATE PHYSICAL STATE
+   ============================================================ */
+function updatePhysical(dt){
+  const physicalSpeed=
+    1-
+    Math.pow(
+      1-.08,
+      dt*60
+    );
+
+  model.cpuExploded=lerp(
+    model.cpuExploded,
+    model.cpuExplodedTarget,
+    physicalSpeed
+  );
+
+  model.ramAlpha=lerp(
+    model.ramAlpha,
+    model.ramAlphaTarget,
+    physicalSpeed*.9
+  );
+
+  if(Math.abs(
+    model.cpuExploded-model.cpuExplodedTarget
+  )<.0002){
+    model.cpuExploded=
+      model.cpuExplodedTarget;
+  }
+
+  if(Math.abs(
+    model.ramAlpha-model.ramAlphaTarget
+  )<.0002){
+    model.ramAlpha=
+      model.ramAlphaTarget;
+  }
+}
+
+/* ============================================================
+   118 — UPDATE AUTOMATION
+   ============================================================ */
+function updateAuto(dt){
+  if(sim.mode!=="auto"){
+    return;
+  }
+
+  sim.elapsed+=dt;
+
+  if(sim.elapsed>=1.70){
+    sim.elapsed=0;
+
+    if(sim.step<6){
+      advanceStep(
+        sim.step+1
+      );
+    }else{
+      sim.mode="manual";
+      updateInstructionUI();
+      toast(
+        "Simulasi selesai"
+      );
+    }
+  }
+
+  if(sim.step>=5){
+    model.ramAlphaTarget=.20;
+  }
+}
+
+/* ============================================================
+   119 — UPDATE MODEL
+   ============================================================ */
+function update(now,dt){
+  updatePhysical(dt);
+  updateAuto(dt);
+  updateParticles(dt);
+
+  if(
+    model.selected
+  ){
+    /* Keep selection alive without changing physical state. */
+  }
+
+  if(
+    model.cpuExploded>.16&&
+    model.selected==="SILICON DIE"
+  ){
+    camera.targetFocus=
+      V(0,.55,0);
+  }
+}
+
+/* ============================================================
+   120 — HIT TARGET SEARCH
+   ============================================================ */
+function findHit(x,y){
+  let best=null;
+  let bestDistance=Infinity;
+
+  const sorted=hits
+    .slice()
+    .sort(
+      (a,b)=>b.priority-a.priority
+    );
+
+  for(const h of sorted){
+    const d=Math.hypot(
+      x-h.x,
+      y-h.y
+    );
+
+    if(
+      d<h.radius&&
+      d<bestDistance
+    ){
+      best=h;
+      bestDistance=d;
+    }
+  }
+
+  return best;
+}
+
+/* ============================================================
+   121 — INSPECT
+   ============================================================ */
+function inspect(name){
+  soundClick("select");
+  model.selected=name;
+
+  if(name==="SILICON DIE"){
+    model.cpuExplodedTarget=1;
+
+    camera.targetFocus=
+      V(0,.55,0);
+
+    camera.targetDistance=
+      8.7;
+
+    camera.targetYaw=
+      .06;
+
+    camera.targetPitch=
+      .72;
+
+    toast(
+      "Fokus: Silicon Die"
+    );
+  }else if(name==="RAM"){
+    camera.targetFocus=
+      V(2.8,.18,0);
+
+    camera.targetDistance=
+      9.8;
+
+    toast(
+      "Fokus: RAM"
+    );
+  }else if(
+    name==="CORE 01"||
+    name==="CORE 02"||
+    name==="CORE 03"||
+    name==="CORE 04"||
+    name==="CACHE"||
+    name==="ALU"||
+    name==="CONTROL UNIT"||
+    name==="REGISTER"
+  ){
+    model.cpuExplodedTarget=1;
+
+    const o=dieBlocks.find(
+      item=>item.name===name
+    );
+
+    if(o){
+      camera.targetFocus=
+        V(
+          o.pos.x,
+          .48,
+          o.pos.z
+        );
+
+      camera.targetDistance=
+        name==="CACHE"
+          ?7.9
+          :8.4;
+    }
+
+    toast(
+      `Inspect: ${name}`
+    );
+  }else{
+    toast(
+      info[name]?.title||name
+    );
+  }
+
+  updateSelectionUI();
+  updateModelUI();
+}
+
+/* ============================================================
+   122 — POINTER DOWN
+   ============================================================ */
+canvas.addEventListener(
+  "pointerdown",
+  e=>{
+    pointer.down=true;
+    pointer.moved=false;
+    pointer.id=e.pointerId;
+    pointer.startX=e.clientX;
+    pointer.startY=e.clientY;
+    pointer.lastX=e.clientX;
+    pointer.lastY=e.clientY;
+
+    canvas.classList.add(
+      "dragging"
+    );
+
+    try{
+      canvas.setPointerCapture(
+        e.pointerId
+      );
+    }catch(_err){}
+  }
+);
+
+/* ============================================================
+   123 — POINTER MOVE
+   ============================================================ */
+canvas.addEventListener(
+  "pointermove",
+  e=>{
+    if(!pointer.down){
+      return;
+    }
+
+    const dx=e.clientX-pointer.lastX;
+    const dy=e.clientY-pointer.lastY;
+
+    if(
+      Math.abs(e.clientX-pointer.startX)+
+      Math.abs(e.clientY-pointer.startY)>5
+    ){
+      pointer.moved=true;
+    }
+
+    pointer.lastX=e.clientX;
+    pointer.lastY=e.clientY;
+
+    camera.yaw-=dx*.0075;
+    camera.pitch+=dy*.0065;
+
+    camera.pitch=
+      clamp(
+        camera.pitch,
+        -1.16,
+        1.18
+      );
+  }
+);
+
+/* ============================================================
+   124 — POINTER UP
+   ============================================================ */
+canvas.addEventListener(
+  "pointerup",
+  e=>{
+    if(!pointer.down){
+      return;
+    }
+
+    pointer.down=false;
+    canvas.classList.remove(
+      "dragging"
+    );
+
+    if(!pointer.moved){
+      const rect=
+        canvas.getBoundingClientRect();
+
+      const x=
+        (e.clientX-rect.left)*dpr;
+
+      const y=
+        (e.clientY-rect.top)*dpr;
+
+      const hit=findHit(
+        x,
+        y
+      );
+
+      if(hit){
+        inspect(
+          hit.name
+        );
+      }
+    }
+
+    try{
+      canvas.releasePointerCapture(
+        e.pointerId
+      );
+    }catch(_err){}
+  }
+);
+
+/* ============================================================
+   125 — POINTER CANCEL
+   ============================================================ */
+canvas.addEventListener(
+  "pointercancel",
+  ()=>{
+    pointer.down=false;
+    canvas.classList.remove(
+      "dragging"
+    );
+  }
+);
+
+/* ============================================================
+   126 — WHEEL
+   ============================================================ */
+canvas.addEventListener(
+  "wheel",
+  e=>{
+    e.preventDefault();
+
+    camera.distance*=
+      Math.exp(
+        e.deltaY*.0008
+      );
+
+    camera.distance=
+      clamp(
+        camera.distance,
+        5.5,
+        21
+      );
+  },
+  {passive:false}
+);
+
+/* ============================================================
+   127 — TOUCH START
+   ============================================================ */
+canvas.addEventListener(
+  "touchstart",
+  e=>{
+    for(const t of e.changedTouches){
+      touchMap.set(
+        t.identifier,
+        {
+          x:t.clientX,
+          y:t.clientY
+        }
+      );
+    }
+
+    if(touchMap.size===2){
+      const a=[
+        ...touchMap.values()
+      ];
+
+      pinchDistance=Math.hypot(
+        a[0].x-a[1].x,
+        a[0].y-a[1].y
+      );
+    }
+  },
+  {passive:true}
+);
+
+/* ============================================================
+   128 — TOUCH MOVE
+   ============================================================ */
+canvas.addEventListener(
+  "touchmove",
+  e=>{
+    for(const t of e.changedTouches){
+      touchMap.set(
+        t.identifier,
+        {
+          x:t.clientX,
+          y:t.clientY
+        }
+      );
+    }
+
+    if(touchMap.size===2){
+      const a=[
+        ...touchMap.values()
+      ];
+
+      const distance=Math.hypot(
+        a[0].x-a[1].x,
+        a[0].y-a[1].y
+      );
+
+      if(pinchDistance>1){
+        camera.distance*=
+          pinchDistance/
+          Math.max(1,distance);
+
+        camera.distance=
+          clamp(
+            camera.distance,
+            5.5,
+            21
+          );
+      }
+
+      pinchDistance=distance;
+    }
+  },
+  {passive:true}
+);
+
+/* ============================================================
+   129 — TOUCH END
+   ============================================================ */
+canvas.addEventListener(
+  "touchend",
+  e=>{
+    for(const t of e.changedTouches){
+      touchMap.delete(
+        t.identifier
+      );
+    }
+
+    if(touchMap.size<2){
+      pinchDistance=0;
+    }
+  },
+  {passive:true}
+);
+
+/* ============================================================
+   130 — BUTTON EVENTS
+   ============================================================ */
+el.explodeBtn.addEventListener(
+  "click",
+  ()=>{
+    soundClick("step");
+    toggleExplode();
+  }
+);
+
+el.manualBtn.addEventListener(
+  "click",
+  ()=>{
+    soundClick("step");
+    startManual();
+  }
+);
+
+el.autoBtn.addEventListener(
+  "click",
+  ()=>{
+    soundClick("step");
+    startAuto();
+  }
+);
+
+el.prevBtn.addEventListener(
+  "click",
+  ()=>{
+    soundClick("soft");
+    previousStep();
+  }
+);
+
+el.nextBtn.addEventListener(
+  "click",
+  ()=>{
+    soundClick("step");
+    nextStep();
+  }
+);
+
+el.resetInstrBtn.addEventListener(
+  "click",
+  ()=>{
+    soundClick("soft");
+    resetInstruction();
+  }
+);
+
+el.resetBtn.addEventListener(
+  "click",
+  ()=>{
+    soundClick("soft");
+    resetAll();
+  }
+);
+
+el.cameraBtn.addEventListener(
+  "click",
+  ()=>{
+    soundClick("soft");
+    resetCamera();
+    toast(
+      "Kamera di-reset"
+    );
+  }
+);
+
+el.soundBtn.addEventListener(
+  "click",
+  ()=>{
+    toggleAudio();
+    soundClick("select");
+  }
+);
+
+/* ============================================================
+   131 — KEYBOARD SHORTCUTS
+   ============================================================ */
+window.addEventListener(
+  "keydown",
+  e=>{
+    if(e.key===" "){
+      e.preventDefault();
+      toggleExplode();
+    }
+
+    if(e.key==="ArrowRight"){
+      nextStep();
+    }
+
+    if(e.key==="ArrowLeft"){
+      previousStep();
+    }
+
+    if(e.key.toLowerCase()==="r"){
+      resetAll();
+    }
+  }
+);
+
+/* ============================================================
+   132 — LOADING BOOT
+   ============================================================ */
+async function boot(){
+  const stages=[
+    "Membangun CPU package...",
+    "Menyusun contact pads dan substrate...",
+    "Membuat silicon die dan circuit detail...",
+    "Menyusun core, cache, ALU, Control Unit, register...",
+    "Membangun modul RAM DDR...",
+    "Menyiapkan camera dan inspection...",
+    "Menyiapkan data-flow dan particle engine...",
+    "Menyiapkan state management..."
+  ];
+
+  for(let i=0;i<stages.length;i++){
+    el.loadingFoot.textContent=
+      stages[i];
+
+    const base=
+      i/stages.length*100;
+
+    const end=
+      (i+1)/stages.length*100;
+
+    for(
+      let p=base;
+      p<end;
+      p+=6
+    ){
+      el.loadingBar.style.width=
+        `${Math.min(end,p)}%`;
+
+      await new Promise(
+        r=>setTimeout(r,17)
+      );
+    }
+  }
+
+  el.loadingBar.style.width=
+    "100%";
+
+  await new Promise(
+    r=>setTimeout(r,120)
+  );
+
+  el.loading.style.display=
+    "none";
+
+  el.soundBtn.textContent=
+    "BACKSOUND: OFF";
+
+  el.soundBtn.classList.remove(
+    "on"
+  );
+}
+
+/* ============================================================
+   133 — MAIN FRAME LOOP
+   ============================================================ */
+let previousTime=
+  performance.now();
+
+function frame(now){
+  const dt=Math.min(
+    .033,
+    Math.max(
+      0,
+      (now-previousTime)/1000
+    )
+  );
+
+  previousTime=now;
+
+  update(
+    now,
+    dt
+  );
+
+  render();
+
+  requestAnimationFrame(
+    frame
+  );
+}
+
+/* ============================================================
+   134 — INITIAL STATE
+   ============================================================ */
+resize();
+resetCamera();
+updateSelectionUI();
+updateModelUI();
+updateInstructionUI();
+
+
+/* ============================================================
+   135B — MOBILE DETAIL OPTIMIZATION
+   ============================================================ */
+function isCompactViewport(){
+  return (canvas.clientWidth<760);
+}
+
+function detailStride(){
+  return isCompactViewport()?2:1;
+}
+
+/* ============================================================
+   135 — START
+   ============================================================ */
+boot().then(()=>{
+  requestAnimationFrame(
+    frame
+  );
+});
+
+/* ============================================================
+   136 — END APPLICATION
+   ============================================================ */
+})();
+</script>
+
+</body>
+</html>
